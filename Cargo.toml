@@ -1,0 +1,22 @@
+[package]
+name = "soundlines"
+version = "0.1.0"
+authors = ["Umur Gedik <umurgdk@gmail.com>"]
+
+[dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+dotenv = "0.10.1"
+
+rocket = "0.3"
+rocket_codegen = "0.3"
+rocket_contrib = { version = "0.3", features = ["json"] }
+
+r2d2-diesel = "*"
+r2d2 = "*"
+
+serde = "*"
+serde_derive = "*"
+serde_json = "*"
+
+diesel = { version = "0.15.2", features = ["postgres", "chrono"] }
+diesel_codegen = { version = "0.15.0", features = ["postgres"] }

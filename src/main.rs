@@ -19,25 +19,24 @@ extern crate serde;
 #[macro_use]
 extern crate serde_json;
 
+extern crate futures;
+extern crate tokio_core;
+extern crate twitter_stream;
+
+use std::env;
+
 mod db;
 mod collectors;
+mod cloud_readings;
+mod server;
 
-use rocket::Request;
-
-#[error(400)]
-fn error(_: &Request) -> &'static str {
-    ""
-}
 
 fn main() {
-    rocket::ignite()
-        .mount("/", routes![
-            collectors::wifi,
-            collectors::sound,
-            collectors::light,
-            collectors::gps
-        ])
-        .catch(errors![error])
-        .manage(db::init_pool())
-        .launch();
+    let args = env::args();
+
+    match args.skip(1).next().as_ref().map(|x| x.as_ref()) {
+        Some("twitter") => cloud_readings::subscribe_to_twitter(),
+        Some(arg) => println!("Unrecognized parameter: {}", arg),
+        None => server::run()
+    }
 }

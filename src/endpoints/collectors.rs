@@ -1,5 +1,4 @@
 use rocket_contrib::Json;
-use rocket::response::status;
 
 use diesel::*;
 use diesel::result::QueryResult;
@@ -12,12 +11,11 @@ use db::models::NewSoundReading;
 use db::models::SoundReading;
 use db::models::NewLightReading;
 use db::models::LightReading;
-use db::models::NewGpsReading;
 use db::models::GpsReading;
 
 use db::guard::*;
 
-#[post("/data/wifi", data = "<reading>")]
+#[post("/wifi", data = "<reading>")]
 pub fn wifi(conn: DbConn, reading: Json<NewWifiReading>) -> QueryResult<Json<WifiReading>> {
     use db::schema::wifi_readings;
 
@@ -26,7 +24,7 @@ pub fn wifi(conn: DbConn, reading: Json<NewWifiReading>) -> QueryResult<Json<Wif
         .map(Json)
 }
 
-#[post("/data/sound", data = "<reading>")]
+#[post("/sound", data = "<reading>")]
 pub fn sound(conn: DbConn, reading: Json<NewSoundReading>) -> QueryResult<Json<SoundReading>> {
     use db::schema::sound_readings;
 
@@ -35,7 +33,7 @@ pub fn sound(conn: DbConn, reading: Json<NewSoundReading>) -> QueryResult<Json<S
         .map(Json)
 }
 
-#[post("/data/light", data = "<reading>")]
+#[post("/light", data = "<reading>")]
 pub fn light(conn: DbConn, reading: Json<NewLightReading>) -> QueryResult<Json<LightReading>> {
     use db::schema::light_readings;
 
@@ -44,19 +42,9 @@ pub fn light(conn: DbConn, reading: Json<NewLightReading>) -> QueryResult<Json<L
         .map(Json)
 }
 
-#[post("/data/gps", data = "<reading>")]
-pub fn gps(conn: DbConn, reading: Json<NewGpsReading>) -> QueryResult<Json<Value>> {
-    use db::schema::gps_readings;
+#[post("/gps", data = "<reading>")]
+pub fn gps(conn: DbConn, reading: Json<GpsReading>) -> QueryResult<Json<Value>> {
+    use chrono::prelude::*;
 
-    insert(&reading.0).into(gps_readings::table)
-        .get_result::<GpsReading>(&*conn)
-        .map(|reading| {
-            let response = json!({
-                "echo": reading,
-                "others": [],
-                "cell": null
-            });
-
-            Json(response)
-        })
+    unimplemented!();
 }

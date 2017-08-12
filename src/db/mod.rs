@@ -10,10 +10,14 @@ use dotenv::dotenv;
 pub mod models;
 pub mod schema;
 pub mod guard;
+pub mod helpers;
 
+pub use self::helpers::*;
 pub use self::guard::DbConn;
 
-pub type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
+pub type Connection = PgConnection;
+pub type Pool = r2d2::Pool<ConnectionManager<Connection>>;
+pub type PooledConnection = r2d2::PooledConnection<ConnectionManager<Connection>>;
 
 pub fn init_pool() -> Pool {
     dotenv().ok();

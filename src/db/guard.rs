@@ -1,16 +1,15 @@
 use std::ops::Deref;
 
-use r2d2;
-use r2d2_diesel::ConnectionManager;
 use diesel::pg::PgConnection;
 use rocket::http::Status;
 use rocket::request::{self, FromRequest};
 use rocket::{Request, State, Outcome};
 
 use super::Pool;
+use super::PooledConnection;
 
 // Connection request guard type: a wrapper around an r2d2 pooled connection.
-pub struct DbConn(pub r2d2::PooledConnection<ConnectionManager<PgConnection>>);
+pub struct DbConn(pub PooledConnection);
 
 /// Attempts to retrieve a single connection from the managed database pool. If
 /// no pool is currently managed, fails with an `InternalServerError` status. If
@@ -35,3 +34,4 @@ impl Deref for DbConn {
         &self.0
     }
 }
+

@@ -10,6 +10,11 @@ fn error(_: &Request) -> &'static str {
     ""
 }
 
+#[error(500)]
+fn error_500(_: &Request) -> &'static str {
+    ""
+}
+
 pub fn run() {
     let db_pool = db::init_pool();
     let parameters = {
@@ -32,6 +37,14 @@ pub fn run() {
         .mount("/cells", routes![
             endpoints::cells::index,
             endpoints::cells::recreate,
+            endpoints::cells::cells_at,
+        ])
+        .mount("/users", routes![
+            endpoints::users::location,
+        ])
+        .mount("/entities", routes![
+            endpoints::entities::generate,
+            endpoints::entities::index,
         ])
         .catch(errors![error])
         .manage(db_pool)

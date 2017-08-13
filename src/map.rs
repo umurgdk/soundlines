@@ -11,10 +11,23 @@ use db::models::Parameter;
 use db::models::Cell;
 
 pub fn generate_cells(params: &Parameter) -> Vec<Cell> {
+    use postgis::ewkb::LineString;
+    use postgis::ewkb::Polygon;
+    use postgis::ewkb::Point;
+    use std::iter::FromIterator;
     generate_cell_polygons(params).into_iter().map(|p| {
+        let points = p.exterior.clone().into_iter().map(|p| {
+            Point::new(p.x(), p.y(), Some(4326))
+        }).collect::<Vec<_>>();
+
+        let mut strings = vec![LineString::from_iter(points)];
+        strings[0].srid = Some(4326);
+        let mut polygon = Polygon::from_iter(strings);
+        polygon.srid = Some(4326);
+
         Cell {
             id: None,
-            geom: p
+            geom: polygon
         }
     }).collect()
 }
@@ -35,7 +48,7 @@ pub fn generate_cell_polygons(params: &Parameter) -> Vec<Polygon<f64>> {
     let cell_width = cell_tl.distance(&cell_tr);
     let cell_height = cell_tl.distance(&cell_bl);
 
-    let cell_tmp = Polygon::new(vec![cell_tl, cell_tr, cell_br, cell_bl].into(), vec![]);
+    let cell_tmp = Polygon::new(vec![cell_tl, cell_bl, cell_br, cell_tr, cell_tl].into(), vec![]);
 
     let horizontal_length = tl.distance(&tr);
     let vertical_length = tl.distance(&bl);

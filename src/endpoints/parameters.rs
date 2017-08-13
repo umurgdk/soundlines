@@ -2,8 +2,9 @@ use rocket::State;
 use rocket_contrib::Json;
 use serde_json::Value;
 
-use db::models::Parameter;
+use db::Result;
 use db::DbConn;
+use db::models::Parameter;
 
 use super::state::*;
 

@@ -1,7 +1,6 @@
 use std::sync::Mutex;
 use std::sync::MutexGuard;
 
-use diesel::prelude::*;
 use rocket_contrib::Json;
 
 use db::Connection;
@@ -12,7 +11,6 @@ pub struct ParametersManager(Mutex<Parameter>);
 impl ParametersManager {
     pub fn from_db(conn: &Connection) -> ParametersManager {
         let parameters = Parameter::fetch(conn).expect("Failed to read parameters from db!");
-
         ParametersManager(Mutex::new(parameters))
     }
 
@@ -26,7 +24,7 @@ impl ParametersManager {
         let mut parameter = self.get();
         closure(&mut *parameter);
 
-        parameter.save_changes::<Parameter>(conn).expect("Failed to update parameters!");
+        //parameter.save_changes::<Parameter>(conn).expect("Failed to update parameters!");
     }
 
     pub fn to_json(&self) -> Json<Parameter> {

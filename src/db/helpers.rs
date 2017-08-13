@@ -1,14 +1,15 @@
-use diesel::prelude::*;
-use diesel::types::FromSqlRow;
-
+use super::Result;
 use super::Connection;
 use super::models::Parameter;
-use super::schema::parameters;
 
 impl Parameter {
-    pub fn fetch(conn: &Connection) -> QueryResult<Parameter> {
-        parameters::table.find(0).first(&*conn)
+    pub fn fetch(conn: &Connection) -> Result<Parameter> {
+        let rows = conn.query("SELECT * FROM parameters where id=0", &[])?;
+        let row = rows.get(0);
+
+        Ok(Parameter{
+            id: Some(row.get("id")),
+            cell_size: row.get("cell_size")
+        })
     }
 }
-
-

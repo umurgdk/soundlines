@@ -10,12 +10,10 @@ extern crate dotenv;
 #[macro_use]
 extern crate env_logger;
 
-#[macro_use]
-extern crate diesel;
-#[macro_use]
-extern crate diesel_codegen;
-extern crate r2d2_diesel;
 extern crate r2d2;
+extern crate r2d2_postgres;
+extern crate postgres;
+extern crate postgis;
 
 #[macro_use]
 extern crate serde_derive;

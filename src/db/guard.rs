@@ -1,11 +1,11 @@
 use std::ops::Deref;
 
-use diesel::pg::PgConnection;
 use rocket::http::Status;
 use rocket::request::{self, FromRequest};
 use rocket::{Request, State, Outcome};
 
 use super::Pool;
+use super::Connection;
 use super::PooledConnection;
 
 // Connection request guard type: a wrapper around an r2d2 pooled connection.
@@ -28,7 +28,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for DbConn {
 
 // For the convenience of using an &DbConn as an &SqliteConnection.
 impl Deref for DbConn {
-    type Target = PgConnection;
+    type Target = Connection;
 
     fn deref(&self) -> &Self::Target {
         &self.0

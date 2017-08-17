@@ -1,4 +1,3 @@
--- Your SQL goes here
 create table wifi_readings (
   id         serial primary key,
   user_id    serial not null,

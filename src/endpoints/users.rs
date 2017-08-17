@@ -21,7 +21,7 @@ pub fn location(conn: DbConn) -> Result<Json> {
         .map(|row| row.get::<_, i32>("id"))
         .collect::<Vec<_>>();
 
-    let entities = conn.query("select entities.id, entities.point, cells.id as cell_id from entities inner join cells on ST_Contains(cells.geom, entities.point) where cells.id = any($1)", &[&neighbor_ids])?;
+    let entities = conn.query("select entities.id, entities.point, entities.prefab, cells.id as cell_id from entities inner join cells on ST_Contains(cells.geom, entities.point) where cells.id = any($1)", &[&neighbor_ids])?;
 
     let neighbor_ids = neighbor_ids.into_iter()
         .map(|id| id as i64)
@@ -35,7 +35,8 @@ pub fn location(conn: DbConn) -> Result<Json> {
             "id": e.get::<_, i32>("id") as i64,
             "cell_id": e.get::<_, i32>("cell_id") as i64,
             "latitude": point.y,
-            "longitude": point.x
+            "longitude": point.x,
+            "prefab": e.get::<_, String>("prefab")
         })
     }).collect::<Vec<_>>();
 

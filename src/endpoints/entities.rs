@@ -35,7 +35,8 @@ pub fn index(conn: DbConn) -> Result<Json> {
         json!({
             "id": e.get::<_, i32>("id") as i64,
             "latitude": point.y,
-            "longitude": point.x
+            "longitude": point.x,
+            "prefab": e.get::<_, String>("prefab")
         })
     }).collect::<Vec<_>>();
 

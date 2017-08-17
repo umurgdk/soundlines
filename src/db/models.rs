@@ -58,7 +58,7 @@ pub struct GpsReading {
     pub point: Point
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Serialize, Clone)]
 pub struct GpsReadingJson {
     pub id: Option<i32>,
     #[serde(default="default_user_id")]

@@ -2,8 +2,8 @@ use serde_json;
 use geo::Point;
 use geo::Polygon;
 use geo::distance::Distance;
-use geo::contains::Contains;
 use geo::translate::Translate;
+use geo::intersects::Intersects;
 use geo::boundingbox::BoundingBox;
 use geo::haversine_destination::HaversineDestination;
 
@@ -15,6 +15,7 @@ pub fn generate_cells(params: &Parameter) -> Vec<Cell> {
     use postgis::ewkb::Polygon;
     use postgis::ewkb::Point;
     use std::iter::FromIterator;
+
     generate_cell_polygons(params).into_iter().map(|p| {
         let points = p.exterior.clone().into_iter().map(|p| {
             Point::new(p.x(), p.y(), Some(4326))
@@ -26,7 +27,7 @@ pub fn generate_cells(params: &Parameter) -> Vec<Cell> {
         polygon.srid = Some(4326);
 
         Cell {
-            id: None,
+            id: 0,
             geom: polygon
         }
     }).collect()
@@ -69,8 +70,8 @@ pub fn generate_cell_polygons(params: &Parameter) -> Vec<Polygon<f64>> {
 
             // TODO: Use intersects after bug is fixed  if polygon.intersects(&cell) {
             // https://github.com/georust/rust-geo/issues/140
-            let intersects = cell.exterior.clone().into_iter().any(|p| polygon.contains(&p));
-            if intersects {
+//            let intersects = cell.exterior.clone().into_iter().any(|p| polygon.contains(&p));
+            if polygon.intersects(&cell) {
                 cells.push(cell);
             }
         }

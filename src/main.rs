@@ -31,6 +31,7 @@ mod endpoints;
 mod cloud_readings;
 mod server;
 mod map;
+mod rocket_extensions;
 
 fn main() {
     println!("Connecting to database...");

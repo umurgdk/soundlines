@@ -2,8 +2,9 @@ use rocket::State;
 use rocket_contrib::Json;
 
 use db::DbConn;
-use db::models::Cell;
 use db::Result;
+use db::models::Cell;
+use db::extensions::*;
 
 use serde_json::Value;
 use super::state::*;
@@ -33,13 +34,8 @@ pub fn recreate(conn: DbConn, parameters: State<ParametersManager>) -> Result<Js
 
 #[get("/")]
 pub fn index(conn: DbConn) -> Result<Json<Value>> {
-    let cells = conn.query("select * from cells", &[])?.into_iter().map(|row| {
-        let polygon: Polygon = row.get("geom");
-        json!({
-            "id": row.get::<_, i32>("id") as i64,
-            "points": polygon.rings[0].points.iter().map(|p| [p.x, p.y]).collect::<Vec<_>>()
-        })
-    }).collect::<Vec<_>>();
+    let cells: Vec<Cell> = conn.all()?;
+    let cells = cells.into_iter().map(Cell::into_json).collect::<Vec<_>>();
 
     Ok(Json(json!({
         "cells": cells
@@ -47,23 +43,11 @@ pub fn index(conn: DbConn) -> Result<Json<Value>> {
 }
 
 #[get("/<latitude>/<longitude>")]
-pub fn cells_at(conn: DbConn, latitude: f64, longitude: f64) -> Result<Json> {
-    let cells = {
-        let rows = conn.query("SELECT id, geom, ST_Contains(geom, ST_SetSRID(ST_Point($1, $2),4326)) as inside FROM cells WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_Point($1, $2),4326)::geography, 55)",
-            &[&longitude, &latitude])?;
+pub fn cells_at(conn: DbConn, latitude: f64, longitude: f64) -> Result<Json<Value>> {
+    use postgis::ewkb::Point;
 
-        rows.into_iter().map(|row| {
-            let id = row.get::<_, i32>("id") as i64;
-
-            if row.get("inside") {
-                println!("Inside: {}", id);
-            }
-
-            id
-        }).collect::<Vec<_>>()
-    };
-
+    let cell = Cell::find_containing(&*conn, &Point::new(longitude, latitude, Some(4326)))?;
     Ok(Json(json!({
-        "cells": cells
+        "cell": cell.map(Cell::into_json)
     })))
 }

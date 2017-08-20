@@ -1,55 +1,78 @@
-use serde_json::Value;
-use postgis::ewkb::Point;
 use rocket_contrib::Json;
+use serde_json::Value;
+
+use rocket_extensions::*;
 
 use db::DbConn;
 use db::Result;
+use db::models::GpsReading;
+use db::models::Entity;
+use db::models::Cell;
+use db::models::CellNeighbours;
+use db::extensions::*;
 
 #[get("/location")]
 pub fn location(conn: DbConn) -> Result<Json> {
-    let rows = conn.query("select * from gps_readings ORDER BY created_at DESC LIMIT 1", &[])?;
+    let gps_reading: GpsReading = match conn.last()? {
+        Some(gps_reading) => gps_reading,
+        None => return Ok(Json(json!({
+            "locations": []
+        })))
+    };
 
-    let gps_row = rows.get(0);
-    let point: Point = gps_row.get("point");
+    let CellNeighbours { cells, entities, current_cell_id } =
+        Cell::find_neighbors(&conn, &gps_reading.point, 55.0)?;
 
-    let rows = conn.query("select id, geom from cells where ST_Contains(geom, $1) LIMIT 1", &[&point])?;
-    let cell_id = rows.get(0).get::<_, i32>("id") as i64;
-
-    let neighbor_rows = conn.query("SELECT id, geom, ST_Contains(geom, ST_SetSRID(ST_Point($1, $2),4326)) as inside FROM cells WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_Point($1, $2),4326)::geography, 55)",
-            &[&point.x, &point.y])?;
-    let neighbor_ids = neighbor_rows.into_iter()
-        .map(|row| row.get::<_, i32>("id"))
-        .collect::<Vec<_>>();
-
-    let entities = conn.query("select entities.id, entities.point, entities.prefab, cells.id as cell_id from entities inner join cells on ST_Contains(cells.geom, entities.point) where cells.id = any($1)", &[&neighbor_ids])?;
-
-    let neighbor_ids = neighbor_ids.into_iter()
-        .map(|id| id as i64)
-        .filter(|id| *id != cell_id)
-        .collect::<Vec<_>>();
-
-    let entities = entities.into_iter().map(|e| {
-        let point: Point = e.get("point");
-
-        json!({
-            "id": e.get::<_, i32>("id") as i64,
-            "cell_id": e.get::<_, i32>("cell_id") as i64,
-            "latitude": point.y,
-            "longitude": point.x,
-            "prefab": e.get::<_, String>("prefab")
-        })
-    }).collect::<Vec<_>>();
+    let neighbors = cells.into_iter().map(|(_, c)| c.id as i64).collect::<Vec<_>>();
+    let entities = entities.into_iter().map(Entity::into_json).collect::<Vec<_>>();
 
     Ok(Json(json!({
         "locations": [{
-            "user_id": gps_row.get::<_, i32>("user_id") as i64,
+            "user_id": gps_reading.user_id,
             "location": {
-                "latitude": point.y,
-                "longitude": point.x
+                "latitude": gps_reading.point.y,
+                "longitude": gps_reading.point.x
             },
-            "cell_id": cell_id,
-            "neighbor_cells": neighbor_ids,
+            "cell_id": current_cell_id,
+            "neighbor_cells": neighbors,
             "entities": entities
         }]
+    })))
+}
+
+#[get("/location/times")]
+pub fn location_times(conn: DbConn) -> Result<Json> {
+    let gps_readings = conn.all::<GpsReading>()?;
+    Ok(Json(json!({
+        "times": gps_readings.into_iter().map(|r| r.created_at).collect::<Vec<_>>()
+    })))
+}
+
+#[get("/location/<since>/<until>")]
+pub fn location_range(conn: DbConn, since: DateTimeUtc, until: DateTimeUtc) -> Result<Json> {
+    let gps_readings = GpsReading::get_time_range(&conn, &since, &until)?;
+
+    let mut locations: Vec<Value> = Vec::with_capacity(gps_readings.len());
+    for gps_reading in gps_readings.into_iter() {
+        let CellNeighbours { cells, entities, current_cell_id } =
+            Cell::find_neighbors(&conn, &gps_reading.point, 55.0)?;
+
+        let neighbors = cells.into_iter().map(|(_, c)| c.id as i64).collect::<Vec<_>>();
+        let entities = entities.into_iter().map(Entity::into_json).collect::<Vec<_>>();
+
+        locations.push(json!({
+            "user_id": gps_reading.user_id,
+            "location": {
+                "latitude": gps_reading.point.y,
+                "longitude": gps_reading.point.x
+            },
+            "cell_id": current_cell_id,
+            "neighbor_cells": neighbors,
+            "entities": entities
+        }));
+    }
+
+    Ok(Json(json!({
+        "locations": locations
     })))
 }

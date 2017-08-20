@@ -9,9 +9,11 @@ use dotenv::dotenv;
 pub mod models;
 pub mod guard;
 pub mod helpers;
+pub mod extensions;
 
 pub use self::helpers::*;
 pub use self::guard::DbConn;
+pub use self::extensions::*;
 
 pub type Result<T> = postgres::Result<T>;
 pub type Connection = postgres::Connection;

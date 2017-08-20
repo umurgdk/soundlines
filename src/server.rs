@@ -41,12 +41,14 @@ pub fn run() {
         ])
         .mount("/users", routes![
             endpoints::users::location,
+            endpoints::users::location_range,
+            endpoints::users::location_times
         ])
         .mount("/entities", routes![
             endpoints::entities::generate,
             endpoints::entities::index,
         ])
-        .catch(errors![error])
+        .catch(errors![error, error_500])
         .manage(db_pool)
         .manage(parameters)
         .launch();

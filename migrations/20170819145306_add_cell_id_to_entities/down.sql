@@ -1,0 +1,1 @@
+ALTER TABLE entities DROP COLUMN cell_id RESTRICT;

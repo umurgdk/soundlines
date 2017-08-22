@@ -21,6 +21,16 @@ impl GpsReading {
         conn.query("select * from gps_readings where created_at >= $1 and created_at < $2", &[&since, &until])
             .map(|rows| rows.into_iter().map(GpsReading::from_sql_row).collect::<Vec<_>>())
     }
+
+    pub fn last_gps_readings_by_user(conn: &Connection) -> Result<Vec<GpsReading>> {
+        conn.query(r#"
+            select *
+            from gps_readings
+            where id in (select distinct max(id) from gps_readings group by user_id)
+            order by created_at desc;
+        "#, &[])
+            .map(|rows| rows.into_iter().map(GpsReading::from_sql_row).collect::<Vec<_>>())
+    }
 }
 
 impl SqlType for GpsReading {

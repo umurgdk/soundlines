@@ -13,21 +13,17 @@ use db::extensions::*;
 
 #[get("/location")]
 pub fn location(conn: DbConn) -> Result<Json> {
-    let gps_reading: GpsReading = match conn.last()? {
-        Some(gps_reading) => gps_reading,
-        None => return Ok(Json(json!({
-            "locations": []
-        })))
-    };
+    let gps_readings = GpsReading::last_gps_readings_by_user(&*conn)?;
 
-    let CellNeighbours { cells, entities, current_cell_id } =
-        Cell::find_neighbors(&conn, &gps_reading.point, 55.0)?;
+	let mut locations = vec![];
+	for gps_reading in gps_readings.into_iter() {
+		let CellNeighbours { cells, entities, current_cell_id } =
+			Cell::find_neighbors(&conn, &gps_reading.point, 55.0)?;
 
-    let neighbors = cells.into_iter().map(|(_, c)| c.id as i64).collect::<Vec<_>>();
-    let entities = entities.into_iter().map(Entity::into_json).collect::<Vec<_>>();
+		let neighbors = cells.into_iter().map(|(_, c)| c.id as i64).collect::<Vec<_>>();
+		let entities = entities.into_iter().map(Entity::into_json).collect::<Vec<_>>();
 
-    Ok(Json(json!({
-        "locations": [{
+		locations.push(json!({
             "user_id": gps_reading.user_id,
             "location": {
                 "latitude": gps_reading.point.y,
@@ -36,8 +32,12 @@ pub fn location(conn: DbConn) -> Result<Json> {
             "cell_id": current_cell_id,
             "neighbor_cells": neighbors,
             "entities": entities
-        }]
-    })))
+        }));
+	}
+
+	Ok(Json(json!({
+		"locations": locations
+	})))
 }
 
 #[get("/location/times")]

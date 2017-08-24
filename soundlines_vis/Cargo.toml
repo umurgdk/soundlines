@@ -1,0 +1,12 @@
+[package]
+name = "soundlines_vis"
+version = "0.1.0"
+authors = ["Umur Gedik <umurgdk@gmail.com>"]
+
+[dependencies]
+rand = "*"
+ndarray = "*"
+noise = "*"
+cgmath = { version = "*", features = ["mint"] }
+mint = "*"
+three = { path = "libs/three-rs" }

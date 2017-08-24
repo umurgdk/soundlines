@@ -1,0 +1,22 @@
+[package]
+name = "soundlines_server"
+version = "0.1.0"
+authors = ["Umur Gedik <umurgdk@gmail.com>"]
+
+[dependencies]
+soundlines_core = { path = "../soundlines_core" }
+chrono = { version = "0.4", features = ["serde"] }
+dotenv = "0.10.1"
+log = "0.3.8"
+env_logger = "*"
+
+geo = "0.4.12"
+egg-mode = { path = "libs/twitter-rs" }
+
+rocket = "0.3"
+rocket_codegen = "0.3"
+rocket_contrib = { version = "0.3", features = ["json"] }
+
+serde = "*"
+serde_derive = "*"
+serde_json = "*"

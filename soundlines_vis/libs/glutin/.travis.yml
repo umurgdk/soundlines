@@ -1,0 +1,31 @@
+language: rust
+
+rust:
+  - nightly
+  - stable
+
+cache: cargo
+
+addons:
+  apt:
+    packages:
+    - libxxf86vm-dev
+    - libosmesa6-dev
+
+env:
+  global:
+    - secure: "kVjHgK+6ivT5tUleNH/m6+69tPf8gkPNSPLsnXrkMJaIeXSnnKKQegP1O0UCThYAUbbwrUGlrKJUngDxkD8jSANhzAULX9t1iXho41InzYBEErTanXBYF8WO1rK1keKjLwiYw4KuvbiBoSeKabzQRwv0kMttxY57+hKVROr5dSg="
+
+script:
+  - cargo build --verbose
+  - cargo test --verbose
+
+os:
+  - linux
+  - osx
+
+after_success: 
+  - |
+      [ $TRAVIS_BRANCH = master ] &&
+      [ $TRAVIS_PULL_REQUEST = false ] &&
+      cargo publish --token ${CRATESIO_TOKEN}

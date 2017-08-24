@@ -1,0 +1,21 @@
+[package]
+name = "soundlines_core"
+version = "0.1.0"
+authors = ["Umur Gedik <umurgdk@gmail.com>"]
+
+[dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+dotenv = "0.10.1"
+log = "0.3.8"
+env_logger = "*"
+
+geo = "0.4.12"
+
+r2d2 = "*"
+r2d2_postgres = "*"
+postgres = { version = "0.15.1", features = ["with-serde_json", "with-geo", "with-chrono"]}
+postgis = { git = "https://github.com/rapiditynetworks/rust-postgis.git", branch = "master" }
+
+serde = "*"
+serde_derive = "*"
+serde_json = "*"

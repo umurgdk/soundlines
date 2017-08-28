@@ -3,6 +3,8 @@
 
 extern crate rocket;
 extern crate rocket_contrib;
+extern crate rocket_jwt;
+
 extern crate chrono;
 extern crate dotenv;
 
@@ -25,11 +27,15 @@ use std::env;
 use soundlines_core::db;
 use soundlines_core::map;
 
+use rocket_jwt::Jwt;
+use rocket_jwt::JwtConfig;
+
 mod db_guard;
 mod endpoints;
 mod cloud_readings;
 mod server;
 mod rocket_extensions;
+mod user;
 
 fn main() {
     println!("Connecting to database...");

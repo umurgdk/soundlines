@@ -6,30 +6,42 @@ use soundlines_core::db::extensions::*;
 use soundlines_core::db::models::*;
 
 use db_guard::*;
+use user::Auth;
+use user::JsonUserIdCheck;
 
 #[post("/wifi", data = "<reading>")]
-pub fn wifi(conn: DbConn, reading: Json<WifiReading>) -> Result<Json<WifiReading>> {
+pub fn wifi(auth: Auth, conn: DbConn, mut reading: Json<WifiReading>) -> Result<Json<WifiReading>> {
+    let user = auth.into_user();
+    reading.0.user_id = user.id;
+
     let reading = conn.insert(&reading.0)?;
     Ok(Json(reading))
 }
 
 #[post("/sound", data = "<reading>")]
-pub fn sound(conn: DbConn, reading: Json<SoundReading>) -> Result<Json<SoundReading>> {
+pub fn sound(auth: Auth, conn: DbConn, mut reading: Json<SoundReading>) -> Result<Json<SoundReading>> {
+    let user = auth.into_user();
+    reading.0.user_id = user.id;
+
     let reading = conn.insert(&reading.0)?;
     Ok(Json(reading))
 }
 
 #[post("/light", data = "<reading>")]
-pub fn light(conn: DbConn, reading: Json<LightReading>) -> Result<Json<LightReading>> {
+pub fn light(auth: Auth, conn: DbConn, mut reading: Json<LightReading>) -> Result<Json<LightReading>> {
+    let user = auth.into_user();
+    reading.0.user_id = user.id;
+
     let reading = conn.insert(&reading.0)?;
     Ok(Json(reading))
 }
 
 #[post("/gps", data = "<reading>")]
-pub fn gps(conn: DbConn, reading: Json<GpsReadingJson>) -> Result<Json<Value>> {
+pub fn gps(auth: Auth, conn: DbConn, mut reading: Json<GpsReadingJson>) -> Result<Json<Value>> {
     use serde_json;
 
-    println!("{}", serde_json::to_string_pretty(&reading.0).unwrap());
+    let user = auth.into_user();
+    reading.0.user_id = user.id;
 
     let gps_reading: GpsReading = reading.0.into_gps_reading(0);
     let gps_reading = conn.insert(&gps_reading)?;

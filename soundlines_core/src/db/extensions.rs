@@ -1,6 +1,14 @@
 use postgres::rows::Row;
 use postgres::rows::Rows;
 use postgres::types::ToSql;
+use postgres::types::FromSql;
+use postgres::types::Type;
+use postgres::types::INTERVAL;
+use postgres::types::IsNull;
+
+use std::error::Error;
+use std::result::Result as StdResult;
+use std::ops::Deref;
 
 use super::Result;
 use super::Connection;
@@ -19,6 +27,58 @@ impl SafeRowAccess for Rows {
     }
 }
 
+use std::time::Duration;
+use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SqlDuration(pub Duration);
+
+impl Deref for SqlDuration {
+    type Target = Duration;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+const USEC_PER_SEC: i64 = 1_000_000;
+
+impl FromSql for SqlDuration {
+    fn from_sql(_: &Type, raw: &[u8]) -> StdResult<SqlDuration, Box<Error + Sync + Send>> {
+        use std::io::Cursor;
+
+        let mut cursor = Cursor::new(raw);
+        let t = cursor.read_i64::<BigEndian>().expect("Failed to parse interval integer");
+
+        Ok(SqlDuration(Duration::from_secs(t as u64 / USEC_PER_SEC as u64)))
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        match *ty {
+            INTERVAL => true,
+            _ => false,
+        }
+    }
+}
+
+impl ToSql for SqlDuration {
+    fn to_sql(&self, ty: &Type, out: &mut Vec<u8>) -> StdResult<IsNull, Box<Error + 'static + Sync + Send>> {
+        Ok(IsNull::No)
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        match *ty {
+            INTERVAL => true,
+            _ => false,
+        }
+    }
+
+    fn to_sql_checked(&self, ty: &Type, out: &mut Vec<u8>) -> StdResult<IsNull, Box<Error + 'static + Sync + Send>> {
+        Ok(IsNull::No)
+    }
+
+}
+
 pub trait LastByDate { } 
 
 pub trait SqlType {
@@ -32,6 +92,8 @@ pub trait QueryExtensions {
     fn all<T: SqlType>(&self) -> Result<Vec<T>>;
     fn last<T: SqlType>(&self) -> Result<Option<T>>;
     fn insert<T: SqlType>(&self, value: &T) -> Result<T>;
+    fn delete<T: SqlType>(&self, id: i32) -> Result<()>;
+    fn update<T: SqlType>(&self, id: i32, &T) -> Result<()>;
 }
 
 impl QueryExtensions for Connection {
@@ -59,5 +121,24 @@ impl QueryExtensions for Connection {
 
         self.query(&query, &arr)
             .map(|rows| T::from_sql_row(rows.get(0)))
+    }
+
+    fn delete<T: SqlType>(&self, id: i32) -> Result<()> {
+        let query = format!("delete from {} where id=$1", T::table_name());
+        self.execute(&query, &[&id]).map(|_| ())
+    }
+
+    fn update<T: SqlType>(&self, id: i32, value: &T) -> Result<()> {
+        let mut values = value.to_sql_array();
+        let values_len = values.len();
+        let mut values_str = "".to_string();
+        for (i, field) in T::insert_fields().into_iter().enumerate() {
+            values_str += &format!("set {}=${}{}", field, i + 1, if i == values_len -1 { "" } else { ", " });
+        }
+
+        let query = format!("update {} {} where id={}", T::table_name(), values_str, values_len + 1);
+        values.push(&id);
+        self.execute(&query, &values)?;
+        Ok(())
     }
 }

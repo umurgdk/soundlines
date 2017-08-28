@@ -1,12 +1,19 @@
 use rocket;
 use rocket::Request;
 
+use rocket_jwt::JwtConfig;
+
 use db;
 use endpoints;
 use endpoints::state::ParametersManager;
 
 #[error(400)]
 fn error(_: &Request) -> &'static str {
+    ""
+}
+
+#[error(401)]
+fn error_401(_: &Request) -> &'static str {
     ""
 }
 
@@ -22,7 +29,12 @@ pub fn run() {
         ParametersManager::from_db(&*conn)
     };
 
-    rocket::ignite()
+    let igniter = rocket::ignite();
+
+    let jwt_secret = igniter.config().get_str("jwt_secret").expect("jwt_secret").to_string();
+    let jwt_config = JwtConfig { secret: jwt_secret };
+
+    igniter
         .mount("/", routes![
             endpoints::parameters::get_parameters,
             endpoints::parameters::update_parameters,
@@ -32,7 +44,6 @@ pub fn run() {
             endpoints::collectors::sound,
             endpoints::collectors::light,
             endpoints::collectors::gps,
-
         ])
         .mount("/cells", routes![
             endpoints::cells::index,
@@ -40,6 +51,7 @@ pub fn run() {
             endpoints::cells::cells_at,
         ])
         .mount("/users", routes![
+            endpoints::users::register,
             endpoints::users::location,
             endpoints::users::location_range,
             endpoints::users::location_times
@@ -48,8 +60,13 @@ pub fn run() {
             endpoints::entities::generate,
             endpoints::entities::index,
         ])
-        .catch(errors![error, error_500])
+        .mount("/dev", routes![
+            endpoints::dev::get_version,
+            endpoints::dev::update_version
+        ])
+        .catch(errors![error, error_401, error_500])
         .manage(db_pool)
         .manage(parameters)
+        .manage(jwt_config)
         .launch();
 }

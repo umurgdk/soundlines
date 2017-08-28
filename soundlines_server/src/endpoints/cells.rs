@@ -34,7 +34,7 @@ pub fn recreate(conn: DbConn, parameters: State<ParametersManager>) -> Result<Js
 
 #[get("/")]
 pub fn index(conn: DbConn) -> Result<Json<Value>> {
-    let cells: Vec<Cell> = conn.all()?;
+    let cells = conn.all::<Cell>()?;
     let cells = cells.into_iter().map(Cell::into_json).collect::<Vec<_>>();
 
     Ok(Json(json!({
@@ -44,7 +44,8 @@ pub fn index(conn: DbConn) -> Result<Json<Value>> {
 
 #[get("/<latitude>/<longitude>")]
 pub fn cells_at(conn: DbConn, latitude: f64, longitude: f64) -> Result<Json<Value>> {
-    let cell = Cell::find_containing(&*conn, &Point::new(longitude, latitude, Some(4326)))?;
+    use geo::Point as GPoint;
+    let cell = Cell::find_containing(&*conn, &GPoint::new(longitude, latitude))?;
     Ok(Json(json!({
         "cell": cell.map(Cell::into_json)
     })))

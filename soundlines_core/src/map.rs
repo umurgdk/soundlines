@@ -28,7 +28,12 @@ pub fn generate_cells(params: &Parameter) -> Vec<Cell> {
 
         Cell {
             id: 0,
-            geom: polygon
+            geom: polygon,
+            wifi: 0.0,
+            light: 0.0,
+            sound: 0.0,
+            sns: 0,
+            visit: 0
         }
     }).collect()
 }

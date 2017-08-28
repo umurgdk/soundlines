@@ -1,0 +1,52 @@
+use postgres::rows::Row;
+use postgres::types::ToSql;
+use postgis::ewkb::Point;
+use chrono::prelude::*;
+
+use db::extensions::*;
+
+#[derive(Debug, Clone)]
+pub struct Seed {
+    pub id: Option<i32>,
+    pub cell_id: i32,
+    pub dna_id: i32,
+    pub point: Point,
+    pub created_at: DateTime<Utc>,
+    pub age: f32
+}
+
+impl Seed {
+    pub fn new(dna_id: i32, location: Point, cell_id: i32) -> Self {
+        Self {
+            id: None,
+            cell_id,
+            dna_id,
+            point: location,
+            created_at: Utc::now(),
+            age: 0.0
+        }
+    }
+}
+
+impl SqlType for Seed {
+    fn table_name() -> &'static str { "seeds" }
+
+    fn from_sql_row<'a>(row: Row<'a>) -> Self {
+        Self { 
+            id: Some(row.get("id")),
+            cell_id: row.get("cell_id"),
+            dna_id: row.get("dna_id"),
+            point: row.get("point"),
+            created_at: row.get("created_at"),
+            age: row.get("age"),
+        }
+    }
+
+    fn insert_fields() -> Vec<&'static str> {
+        vec![ "cell_id", "dna_id", "point", "created_at", "age" ]
+    }
+
+    fn to_sql_array<'a>(&'a self) -> Vec<&'a ToSql> {
+        vec![ &self.cell_id, &self.dna_id, &self.point, &self.created_at, &self.age ]
+    }
+}

@@ -1,22 +1,8 @@
 [development]
-address = "127.0.0.1"
+address = "localhost"
 port = 8000
 workers = 16
 log = "normal"
 limits = { forms = 32768 }
+jwt_secret = "toosecret"
 
-# #[staging]
-#address = "0.0.0.0"
-#port = 80
-#workers = [number_of_cpus * 2]
-#log = "normal"
-#secret_key = [randomly generated at launch]
-#limits = { forms = 32768 }
-
-# #[production]
-#address = "0.0.0.0"
-#port = 80
-#workers = [number_of_cpus * 2]
-#log = "critical"
-#secret_key = [randomly generated at launch]
-#limits = { forms = 32768 }

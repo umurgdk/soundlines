@@ -1,12 +1,16 @@
 [package]
-name = "soundlines_vis"
+name = "soundlines_sim"
 version = "0.1.0"
 authors = ["Umur Gedik <umurgdk@gmail.com>"]
 
 [dependencies]
+soundlines_core = { path = "../soundlines_core" }
+geo = "*"
 rand = "*"
 ndarray = "*"
 noise = "*"
-cgmath = { version = "*", features = ["mint"] }
+cgmath = { version = "0.15.0", features = ["mint"] }
 mint = "*"
 three = { path = "libs/three-rs" }
+chrono = "*"
+rayon = "0.8"

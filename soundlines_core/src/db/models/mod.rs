@@ -19,4 +19,16 @@ pub use self::parameters::*;
 mod entities;
 pub use self::entities::*;
 
+mod plant_settings;
+pub use self::plant_settings::*;
+
+mod dnas;
+pub use self::dnas::*;
+
+mod seeds;
+pub use self::seeds::*;
+
+mod users;
+pub use self::users::*;
+
 pub fn default_user_id() -> i32 { 1 }

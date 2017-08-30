@@ -10,6 +10,7 @@ use db::extensions::*;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Dna {
+    #[serde(default)]
     pub id: i32,
     pub setting_id: i32,
     pub size: f32,

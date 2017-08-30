@@ -13,16 +13,15 @@ use geo::Point as GPoint;
 use soundlines_core::postgis::ewkb::Point;
 use soundlines_core::postgis::ewkb::Polygon;
 
-pub fn random(min: f32, max: f32) -> f32 {
+pub fn random<T>(min: T, max: T) -> T 
+    where T: PartialEq + PartialOrd + rand::distributions::range::SampleRange
+{
     if min == max {
 	    return min;
     }
 
     let mut rng = rand::thread_rng();
-    let range = Range::new(min, max);
-    unsafe {
-        range.ind_sample(&mut rng)
-    }
+    Range::new(min, max).ind_sample(&mut rng)
 }
 
 pub fn random_choice<T>(elems: &[T]) -> &T {
@@ -71,4 +70,8 @@ pub fn since(time: DateTime<Utc>) -> Duration {
 
 pub fn into_core_point(point: &GPoint<f64>) -> Point {
     Point::new(point.x(), point.y(), Some(4326))
+}
+
+pub fn into_geo_point(point: &Point) -> GPoint<f64> {
+    GPoint::new(point.x, point.y)
 }

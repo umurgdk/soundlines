@@ -10,14 +10,17 @@ use soundlines_core::db::models::Dna;
 
 use helpers::*;
 use sim_dna::SimDna;
+use context::SimContext;
 
-pub struct SimEntity<'s: 'd, 'd> {
+#[derive(Debug)]
+pub struct SimEntity<'s: 'd, 'd, 'c> {
     pub entity: Entity,
     pub setting: &'s PlantSetting,
-    pub dna: &'d SimDna<'s>
+    pub dna: &'d SimDna<'s>,
+    pub ctx: &'c SimContext
 }
 
-impl<'s: 'd, 'd> Deref for SimEntity<'s, 'd> {
+impl<'s: 'd, 'd, 'c> Deref for SimEntity<'s, 'd, 'c> {
     type Target = Entity;
 
     fn deref(&self) -> &Self::Target {
@@ -25,18 +28,19 @@ impl<'s: 'd, 'd> Deref for SimEntity<'s, 'd> {
     }
 }
 
-impl<'s: 'd, 'd> DerefMut for SimEntity<'s, 'd> {
+impl<'s: 'd, 'd, 'c> DerefMut for SimEntity<'s, 'd, 'c> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.entity
     }
 }
 
-impl<'a: 'd, 'd> SimEntity<'a, 'd> {
-    pub fn from_entity(entity: Entity, setting: &'a PlantSetting, dna: &'d SimDna<'a>) -> Self {
+impl<'a: 'd, 'd, 'c> SimEntity<'a, 'd, 'c> {
+    pub fn from_entity(entity: Entity, setting: &'a PlantSetting, dna: &'d SimDna<'a>, ctx: &'c SimContext) -> Self {
         Self {
             entity,
             setting,
             dna,
+            ctx
         }
     }
 
@@ -45,13 +49,13 @@ impl<'a: 'd, 'd> SimEntity<'a, 'd> {
     }
 
     pub fn is_waiting_fruit(&self) -> bool {
-        let since_last_seed = since(self.entity.last_seed_at);
-        since_last_seed < self.setting.fruit_duration.0
+        let since_last_seed = self.entity.age - self.entity.last_seed_at;
+        since_last_seed < self.setting.fruit_duration
     }
 
     pub fn is_mating(&self) -> bool {
-        let since_last_mate = since(self.entity.start_mating_at);
-        since_last_mate < self.setting.mating_duration.0 && !self.is_waiting_fruit()
+        let since_last_mate = self.entity.age - self.entity.start_mating_at;
+        since_last_mate < self.setting.mating_duration && !self.is_waiting_fruit()
     }
 
     pub fn is_overcrowded(&self, neighbor_count: i32) -> bool {
@@ -59,15 +63,8 @@ impl<'a: 'd, 'd> SimEntity<'a, 'd> {
     }
 
     pub fn should_start_mating(&self) -> bool {
-        let since_last_mate = since(self.entity.start_mating_at);
-
-        let mating_freq_seconds = self.setting.mating_freq.0.as_secs() as f64;
-        let since_last_seconds = since_last_mate.as_secs() as f64;
-
-        let modulus = since_last_seconds % mating_freq_seconds;
-
-        let right_moment = modulus < 1.0;
-        let have_chance = random(0.0, 1.0) < self.setting.birth_proba;
+        let right_moment = (self.entity.age % self.setting.mating_freq).floor() == 0.0;
+        let have_chance = random(0.0, 1.05) < self.setting.birth_proba;
 
         right_moment && have_chance && !self.is_waiting_fruit()
     }
@@ -87,7 +84,7 @@ impl<'a: 'd, 'd> SimEntity<'a, 'd> {
         		 map(cell.sound, 0.0, 1.0, 0.5, 1.0) ) / 2.6;
 
         	wifi * light * sound
-     	} else if cell.wifi <= 0.5  {
+     	} else {
        		let wifi = 
        			(map(self.setting.wifi_sensitivity , -1.0, 1.0, 5.0, 0.2) *
        			 map(cell.wifi, 0.0, 1.0, 0.5, 1.0) ) / 1.3  ;
@@ -101,8 +98,6 @@ impl<'a: 'd, 'd> SimEntity<'a, 'd> {
        			 map(cell.sound, 0.0, 1.0, 0.5, 1.0) ) / 1.3 ;
 
         	wifi * light * sound
-     	} else {
-     	    unreachable!();
      	}
     }
 
@@ -113,7 +108,7 @@ impl<'a: 'd, 'd> SimEntity<'a, 'd> {
 
   		// plant only grows when it is fit
   		if self.entity.fitness > 30.0 && self.entity.size < self.setting.growth_limit {
-     		self.entity.size += self.dna.growth_rate * sensitivity;
+     		self.entity.size += sensitivity;
   		}
 
   		// stressed when overcrowded 
@@ -123,10 +118,10 @@ impl<'a: 'd, 'd> SimEntity<'a, 'd> {
     }
 
     pub fn start_mating(&mut self) {
-        self.entity.start_mating_at = Utc::now();
+        self.entity.start_mating_at = self.entity.age;
     }
 
     pub fn mate(&mut self) {
-        self.entity.last_seed_at = Utc::now();
+        self.entity.last_seed_at = self.entity.age;
     }
 }

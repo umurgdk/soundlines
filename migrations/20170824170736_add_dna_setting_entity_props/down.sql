@@ -7,6 +7,5 @@ drop column setting_id,
 drop column fitness,
 drop column life_expectancy,
 drop column nickname,
-drop column mating,
 drop column start_mating_at,
 drop column last_seed_at;

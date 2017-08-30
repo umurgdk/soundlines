@@ -21,5 +21,7 @@ extern crate serde_json;
 
 extern crate byteorder;
 
+extern crate rand;
+
 pub mod db;
 pub mod map;

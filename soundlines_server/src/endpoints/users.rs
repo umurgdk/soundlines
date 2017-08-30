@@ -73,25 +73,17 @@ pub fn location_times(conn: DbConn) -> Result<Json> {
 
 #[get("/location/<since>/<until>")]
 pub fn location_range(conn: DbConn, since: DateTimeUtc, until: DateTimeUtc) -> Result<Json> {
+    let reading_count = GpsReading::get_time_range_count(&conn, &since, &until)?;
     let gps_readings = GpsReading::get_time_range(&conn, &since, &until)?;
 
     let mut locations: Vec<Value> = Vec::with_capacity(gps_readings.len());
     for gps_reading in gps_readings.into_iter() {
-        let CellNeighbours { cells, entities, current_cell_id } =
-            Cell::find_neighbors(&conn, &gps_reading.point, 55.0)?;
-
-        let neighbors = cells.into_iter().map(|(_, c)| c.id as i64).collect::<Vec<_>>();
-        let entities = entities.into_iter().map(Entity::into_json).collect::<Vec<_>>();
-
         locations.push(json!({
             "user_id": gps_reading.user_id,
             "location": {
                 "latitude": gps_reading.point.y,
                 "longitude": gps_reading.point.x
-            },
-            "cell_id": current_cell_id,
-            "neighbor_cells": neighbors,
-            "entities": entities
+            }
         }));
     }
 

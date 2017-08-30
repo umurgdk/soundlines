@@ -1,12 +1,17 @@
 use soundlines_core::db::PooledConnection;
 use soundlines_core::db::extensions::*;
 
+#[derive(Debug)]
 pub struct SimContext {
-    pub db_conn: PooledConnection
+    pub time_scale: f32,
+    pub max_seed_age: f32
 }
 
-impl SimContext {
-    pub fn new(db_conn: PooledConnection) -> Self {
-        Self { db_conn }
+impl Default for SimContext {
+    fn default() -> Self {
+        Self {
+            time_scale: 1.0,
+            max_seed_age: 250.0
+        }
     }
 }

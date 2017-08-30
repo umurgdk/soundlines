@@ -1,3 +1,5 @@
+use rand;
+
 use postgis::ewkb::Point;
 use postgres::rows::Row;
 use postgres::types::ToSql;
@@ -19,21 +21,24 @@ pub struct Entity {
     pub setting_id: i32,
     pub dna_id: i32,
     pub fitness: f32,
-    pub age: f32,
-    pub size: f32,
     pub life_expectancy: f32,
     pub nickname: String,
-    pub mating: bool,
-    pub start_mating_at: DateTime<Utc>,
-    pub last_seed_at: DateTime<Utc>
+    pub age: f32,
+    pub size: f32,
+    pub start_mating_at: f32,
+    pub last_seed_at: f32
 }
 
 impl Entity {
     pub fn new(location: Point, cell_id: i32, setting: &PlantSetting, dna: &Dna) -> Self {
+        let index: u32 = rand::random();
+        let prefab = format!("{}{}", setting.prefab, (index % 3) + 1);
+        let nickname = format!("entity-{}", rand::random::<u64>());
+
         Self {
             id: -1,
             point: location,
-            prefab: setting.prefab.clone(),
+            prefab,
             cell_id,
             setting_id: setting.id.expect("Trying to create an entity with unsaved setting (has no id)"),
             dna_id: dna.id,
@@ -41,10 +46,9 @@ impl Entity {
             age: 0.0,
             size: dna.size,
             life_expectancy: dna.life_expectancy,
-            nickname: "".to_string(),
-            mating: false,
-            start_mating_at: Utc::now(),
-            last_seed_at: Utc::now()
+            nickname,
+            start_mating_at: 0.0,
+            last_seed_at: 0.0
         }
     }
 
@@ -62,9 +66,8 @@ impl Entity {
             "size": self.size,
             "life_expectancy": self.life_expectancy,
             "nickname": &self.nickname,
-            "mating": self.mating,
-            "start_mating_at": self.start_mating_at.clone(),
-            "last_seed_at": self.last_seed_at.clone(),
+            "start_mating_at": self.start_mating_at,
+            "last_seed_at": self.last_seed_at
         })
     }
 
@@ -89,12 +92,28 @@ impl SqlType for Entity {
             size: row.get("size"),
             life_expectancy: row.get("life_expectancy"),
             nickname: row.get("nickname"),
-            mating: row.get("mating"),
             start_mating_at: row.get("start_mating_at"),
             last_seed_at: row.get("last_seed_at"),
         }
     }
-    fn insert_fields() -> Vec<&'static str> { vec!["point", "prefab", "cell_id"] }
+    
+    fn insert_fields() -> Vec<&'static str> { 
+        vec![
+            "point",
+            "prefab",
+            "cell_id",
+            "setting_id",
+            "dna_id",
+            "fitness",
+            "age",
+            "size",
+            "life_expectancy",
+            "nickname",
+            "start_mating_at",
+            "last_seed_at",
+        ]
+    }
+
     fn to_sql_array<'a>(&'a self) -> Vec<&'a ToSql> {
         vec![
             &self.point, 
@@ -107,7 +126,6 @@ impl SqlType for Entity {
             &self.size,
             &self.life_expectancy,
             &self.nickname,
-            &self.mating,
             &self.start_mating_at,
             &self.last_seed_at,
         ]

@@ -60,6 +60,10 @@ pub fn run() {
             endpoints::entities::generate,
             endpoints::entities::index,
         ])
+        .mount("/seeds", routes![
+            endpoints::seeds::pickup,
+            endpoints::seeds::spread
+        ])
         .mount("/dev", routes![
             endpoints::dev::get_version,
             endpoints::dev::update_version

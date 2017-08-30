@@ -7,9 +7,10 @@ use soundlines_core::db::models::PlantSetting;
 use helpers::*;
 use constants::*;
 
+#[derive(Debug)]
 pub struct SimDna<'s> {
-    dna: Dna,
-    setting: &'s PlantSetting
+    pub dna: Dna,
+    pub setting: &'s PlantSetting
 }
 
 impl<'s> Deref for SimDna<'s> {
@@ -27,6 +28,24 @@ impl<'s> DerefMut for SimDna<'s> {
 }
 
 impl<'s> SimDna<'s> {
+    pub fn random_from_setting(setting: &'s PlantSetting) -> Self {
+        let stress_rate = random(0.0003, 0.001);
+        let dna = Dna {
+            id: -1,
+            setting_id: setting.id.expect("setting doesn't have an id"),
+            size: random(setting.growth_limit * 0.08, setting.growth_limit * 0.25),
+            fitness: random(100.0, 115.0),
+            life_expectancy: random(setting.life_expectancy * 0.8, setting.life_expectancy * 1.1),
+            growth_rate: random(0.0007, 0.004),
+            aging_rate: random(0.005, 0.01),
+            mutation_rate: random(0.01, 0.1),
+            stress_rate,
+            healthy_rate: (1.0 - stress_rate) / 50.0
+        };
+
+        Self::from_dna(dna, setting)
+    }
+
     pub fn from_dna(dna: Dna, setting: &'s PlantSetting) -> Self {
         Self {
             dna,

@@ -22,6 +22,11 @@ impl GpsReading {
             .map(|rows| rows.into_iter().map(GpsReading::from_sql_row).collect::<Vec<_>>())
     }
 
+    pub fn get_time_range_count(conn: &Connection, since: &DateTime<Utc>, until: &DateTime<Utc>) -> Result<i32> {
+        conn.query("select COUNT(*) from gps_readings where created_at >= $1 and created_at < $2", &[&since, &until])
+            .map(|rows| rows.try_get(0).map(|r| r.get::<_, i32>("count")).unwrap_or(0))
+    }
+
     pub fn last_gps_readings_by_user(conn: &Connection) -> Result<Vec<GpsReading>> {
         conn.query(r#"
             select *

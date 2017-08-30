@@ -17,7 +17,7 @@ pub fn get_version() -> Result<String, io::Error> {
 
 #[put("/version", data = "<content>")]
 pub fn update_version(content: String) -> Result<String, io::Error> {
-    let mut file = File::open("resources/version")?;
+    let mut file = File::create("resources/version")?;
     file.write_all(content.as_bytes())?;
 
     Ok(content)

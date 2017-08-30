@@ -2,6 +2,8 @@ use std::thread;
 use std::time::Duration;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::error::Error;
+use std::mem;
 
 use geo::Point;
 use geo::Polygon;
@@ -28,132 +30,149 @@ use sim_dna::SimDna;
 use sim_seed::SimSeed;
 use sim_geo::get_seed_location;
 
-pub fn run(connection_pool: Pool) {
+pub fn run(connection_pool: Pool) -> Result<(), Box<Error>>{
+    let ctx = SimContext {
+        time_scale: 60.0,
+        ..SimContext::default()
+    };
+
     let connection_pool = Arc::new(connection_pool);
-    let ctx = SimContext::new(connection_pool.get().expect("Failed to get connection from pool"));
+    let conn = connection_pool.get()?;
 
-    let cells = ctx.db_conn.all::<Cell>().expect("Failed to fetch cells")
-        .into_iter()
-        .map(|c| (c.id, c))
-        .collect::<HashMap<_, _>>();
-
-    let plant_settings = ctx.db_conn.all::<PlantSetting>().expect("Failed to fetch plant settings")
+    let plant_settings = conn.all::<PlantSetting>()?
         .into_iter()
         .map(|s| (s.id.unwrap(), s))
         .collect::<HashMap<_, _>>();
 
-    let dnas = ctx.db_conn.all::<Dna>().expect("Failed to fetch dnas")
-        .into_iter()
-        .map(|d| {
-            let setting = &plant_settings[&d.setting_id];
-            (d.id, SimDna::from_dna(d, setting))
-        })
+    loop {
+        let cells = conn.all::<Cell>()?
+            .into_iter()
+            .map(|c| (c.id, c))
+            .collect::<HashMap<_, _>>();
+
+        let dnas = conn.all::<Dna>()?
+            .into_iter()
+            .map(|d| {
+                let setting = &plant_settings[&d.setting_id];
+                (d.id, SimDna::from_dna(d, setting))
+            })
         .collect::<HashMap<_, _>>();
 
-    let mut entities = ctx.db_conn.all::<Entity>().expect("Failed to fetch entities")
-        .into_iter()
-        .map(|e| {
-            let setting = &plant_settings[&e.setting_id];
-            let dna = &dnas[&e.dna_id];
+        let mut entities = conn.all::<Entity>()?
+            .into_iter()
+            .map(|e| {
+                let setting = &plant_settings[&e.setting_id];
+                let dna = &dnas[&e.dna_id];
 
-            (e.id, SimEntity::from_entity(e, setting, dna))
-        })
+                (e.id, SimEntity::from_entity(e, setting, dna, &ctx))
+            })
         .collect::<HashMap<_, SimEntity>>();
 
-    let mut seeds = ctx.db_conn.all::<Seed>().expect("Failed to fetch seeds")
-        .into_iter()
-        .map(|s| {
-            let dna = &dnas[&s.dna_id];
-            let setting = &plant_settings[&dna.setting_id];
+        let mut seeds = conn.all::<Seed>()?
+            .into_iter()
+            .map(|s| {
+                let dna = &dnas[&s.dna_id];
+                let setting = &plant_settings[&dna.setting_id];
 
-            // seed from db so it has id
-            (s.id.unwrap(), SimSeed::from_seed(s, dna, setting))
-        })
+                // seed from db so it has id
+                (s.id.unwrap(), SimSeed::from_seed(s, dna, setting, &ctx))
+            })
         .collect::<HashMap<_,_>>();
 
-    let entity_locations = entities
-        .iter()
-        .map(|(id, e)| (*id, Point::new(e.point.x, e.point.y)))
-        .collect::<HashMap<_, _>>();
+        println!("Count: {} entities, {} seeds", entities.len(), seeds.len());
 
-    loop {
-        let mut possible_mate_candidates: Vec<(i32, Vec<i32>)> = vec![];
-        for (id, entity) in entities.iter_mut() {
-            let setting = plant_settings.get(&entity.setting_id)
-                .expect(&format!("Plant setting with id: {} not found", entity.setting_id));
-
-            let entity_location = Point::new(entity.point.x, entity.point.y);
-
-            let overcrowd_distance = setting.overcrowd_distance;
-            let neighbors_count = entity_locations
-                .iter()
-                .filter(|&(_, &location)| entity_location.haversine_distance(&location) < overcrowd_distance as f64)
-                .count();
-
-            {
-                let cell = &cells[&entity.cell_id];
-                entity.update_by_neighbors(cell, neighbors_count as i32);
-            }
-
-            if entity.should_start_mating() {
-                entity.start_mating();
-            }
-
-            if !entity.is_mating() {
-                continue;
-            }
-
-            let mating_distance = setting.mating_distance as f64;
-            let mate_candidate_ids = entity_locations
-                .iter()
-                .filter(|&(_, &location)| entity_location.haversine_distance(&location) < mating_distance)
-                .map(|(id, _)| *id)
-                .collect::<Vec<_>>();
-
-            possible_mate_candidates.push((*id, mate_candidate_ids));
-        }
+        let entity_locations = entities
+            .iter()
+            .map(|(id, e)| (*id, Point::new(e.point.x, e.point.y)))
+            .collect::<HashMap<_, _>>();
 
         let mut new_seeds = vec![];
+        for _ in 0..ctx.time_scale as u32 {
+            let mut possible_mate_candidates: Vec<(i32, Vec<i32>)> = vec![];
+            for (id, entity) in entities.iter_mut() {
+                let setting = plant_settings.get(&entity.setting_id)
+                    .ok_or(format!("Plant setting with id: {} not found", entity.setting_id))?;
 
-        let mut rng = rand::thread_rng();
-        for &(entity_id, ref mating_candiadates) in possible_mate_candidates.iter() {
-            let matched_entity_id = random_choice_with(mating_candiadates, |candidate_id| {
-                entities[&candidate_id].is_mating()
-            });
+                let entity_location = Point::new(entity.point.x, entity.point.y);
 
-            if let Some(matched_id) = matched_entity_id {
-                entities.get_mut(&entity_id).unwrap().mate();
-                entities.get_mut(matched_id).unwrap().mate();
+                let overcrowd_distance = setting.crowd_distance;
+                let neighbors_count = entity_locations
+                    .iter()
+                    .filter(|&(_, &location)| entity_location.haversine_distance(&location) < overcrowd_distance as f64)
+                    .count();
 
-                let entity1 = &entities[&entity_id];
-                let entity2 = &entities[matched_id];
+                {
+                    let cell = &cells[&entity.cell_id];
+                    entity.update_by_neighbors(cell, neighbors_count as i32);
+                }
 
-                let wind = Vector2::<f64>::rand(&mut rng).normalize_to(25.0);
-                let seed_location = get_seed_location(entity1, entity2, wind);
-                let child_dna = entity1.dna.reproduce(entity2.dna);
+                if entity.should_start_mating() {
+                    entity.start_mating();
+                }
 
-                new_seeds.push((child_dna, entity1.setting, seed_location));
+                if !entity.is_mating() {
+                    continue;
+                }
+
+                let mating_distance = setting.mating_distance as f64;
+                let mate_candidate_ids = entity_locations
+                    .iter()
+                    .filter(|&(_, &location)| entity_location.haversine_distance(&location) < mating_distance)
+                    .map(|(id, _)| *id)
+                    .collect::<Vec<_>>();
+
+                possible_mate_candidates.push((*id, mate_candidate_ids));
+            }
+
+            let mut rng = rand::thread_rng();
+            for &(entity_id, ref mating_candiadates) in possible_mate_candidates.iter() {
+                let matched_entity_id = random_choice_with(mating_candiadates, |candidate_id| {
+                    *candidate_id != entity_id && entities[&candidate_id].is_mating()
+                });
+
+                if let Some(matched_id) = matched_entity_id {
+                    if random(0.0, 1.05) >= entities[&entity_id].setting.birth_proba {
+                        continue;
+                    }
+
+                    entities.get_mut(&entity_id).unwrap().mate();
+                    entities.get_mut(matched_id).unwrap().mate();
+
+                    let entity1 = &entities[&entity_id];
+                    let entity2 = &entities[matched_id];
+
+                    let wind = Vector2::<f64>::rand(&mut rng).normalize_to(25.0);
+                    let seed_location = get_seed_location(entity1, entity2, wind);
+                    let child_dna = entity1.dna.reproduce(entity2.dna);
+
+                    new_seeds.push((child_dna, entity1.setting, seed_location));
+                    println!("New thrown seed pending...");
+                }
+            }
+
+            // update seeds
+            for (_, seed) in seeds.iter_mut() {
+                seed.update();
             }
         }
-
-        // update seeds
-        for (_, seed) in seeds.iter_mut() {
-            seed.update();
-        }
-
-        use rayon::iter::Zip;
 
         // create seeds
         new_seeds
             .into_par_iter()
             .for_each_with(connection_pool.clone(), |pool, (dna, setting, loc)| {
+                println!("thrown checking {}@{}", loc.y(), loc.x());
+
                 let conn = pool.get().expect("Failed to get connection in parallel seed creation");
                 let cell = Cell::find_containing(&*conn, &loc).expect("Failed to fetch cell containing a location");
 
                 // TODO: handle seed thrown outside of the grid
                 if let Some(cell) = cell {
-                    let seed = Seed::new(dna.id, into_core_point(&loc), cell.id);
-                    conn.insert(&seed).expect("Failed to write new seed to db");
+                    let dna = conn.insert(&dna.dna).expect("Failed to write new seed's dna to the db");
+                    let seed = Seed::new(dna.id, into_core_point(&loc), cell.id, dna.setting_id);
+                    let seed = conn.insert(&seed).expect("Failed to write new seed to db");
+                    println!("New seed is thrown at {:?}", seed.point);
+                } else {
+                    println!("Seed out of grid!");
                 }
             });
 
@@ -163,6 +182,8 @@ pub fn run(connection_pool: Pool) {
             .for_each_with(connection_pool.clone(), |pool, (id, _)| {
                 let conn = pool.get().expect("Failed to get connection in parallel seed destroying");
                 conn.delete::<Seed>(id).expect("Failed to delete dead seed");
+
+                println!("A seed is died...");
             });
 
         // create new entities for bloomed seeds
@@ -174,6 +195,8 @@ pub fn run(connection_pool: Pool) {
 
                 let entity = Entity::new(s.seed.point, s.seed.cell_id, s.setting, s.dna);
                 conn.insert(&entity).expect("Failed to insert new entity for blooming seed");
+
+                println!("A seed is bloomed...");
             });
 
         // Update rest of the seeds
@@ -184,22 +207,30 @@ pub fn run(connection_pool: Pool) {
                 conn.update(id, &s.seed).expect("Failed to update seed");
             });
 
-        let (dead_entities, other_entities) = entities.into_iter().partition(|&(_, ref e)| e.is_dead());
-        entities = other_entities;
+        let tmp_entities = mem::replace(&mut entities, HashMap::new());
+        let (dead_entities, other_entities): (HashMap<_, _>, HashMap<_, _>) = tmp_entities.into_iter().partition(|&(_, ref e)| e.is_dead());
+
         // Delete dead entities
-        dead_entities.into_par_iter()
+        dead_entities
+            .into_par_iter()
             .for_each_with(connection_pool.clone(), |pool, (id, _)| {
                 let conn = pool.get().expect("Failed to get connection in parallel destroying dead entities");
                 conn.delete::<Entity>(id).expect("Failed to delete entity");
+
+                println!("An entity is died...");
             });
 
         // Update rest of the entities
-        entities.par_iter()
+        other_entities.par_iter()
             .for_each_with(connection_pool.clone(), |pool, (&id, ref e)| {
                 let conn = pool.get().expect("Failed to get connection in parallel updating entities");
                 conn.update(id, &e.entity).expect("Failed to update entity");
             });
 
-        thread::sleep(Duration::from_secs(1));
+        entities = other_entities;
+
+        thread::sleep(Duration::from_millis(300));
     }
+
+    Ok(())
 }

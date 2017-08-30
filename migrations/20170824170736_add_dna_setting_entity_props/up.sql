@@ -34,6 +34,5 @@ add column dna_id integer not null default 1,
 add column fitness real not null default 0.0,
 add column life_expectancy real not null default 0.0,
 add column nickname varchar not null default 'entity',
-add column mating boolean not null default FALSE,
 add column start_mating_at timestamptz not null default now(),
 add column last_seed_at timestamptz not null default now();

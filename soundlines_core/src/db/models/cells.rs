@@ -52,7 +52,6 @@ select
        entity.size            as e_size,
        entity.life_expectancy as e_life_expectancy,
        entity.nickname        as e_nickname,
-       entity.mating          as e_mating,
        entity.start_mating_at as e_start_mating_at,
        entity.last_seed_at    as e_laast_seed_at
 
@@ -69,6 +68,11 @@ where
 impl Cell {
     pub fn find_containing(conn: &Connection, point: &GPoint<f64>) -> Result<Option<Cell>> {
         let point = Point::new(point.x(), point.y(), Some(4326));
+        conn.query("select * from cells where ST_Contains(geom, $1) LIMIT 1", &[&point])
+            .map(|rows| rows.try_get(0).map(Cell::from_sql_row))
+    }
+
+    pub fn find_containing_core(conn: &Connection, point: &Point) -> Result<Option<Cell>> {
         conn.query("select * from cells where ST_Contains(geom, $1) LIMIT 1", &[&point])
             .map(|rows| rows.try_get(0).map(Cell::from_sql_row))
     }
@@ -121,7 +125,6 @@ impl Cell {
                 size: row.get("e_size"),
                 life_expectancy: row.get("e_life_expectancy"),
                 nickname: row.get("e_nickname"),
-                mating: row.get("e_mating"),
                 start_mating_at: row.get("e_start_mating_at"),
                 last_seed_at: row.get("e_laast_seed_at")
             });

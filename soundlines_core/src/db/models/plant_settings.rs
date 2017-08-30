@@ -17,11 +17,11 @@ pub struct PlantSetting {
     pub neighbor_tolerance: f32,
     pub birth_proba: f32,
     pub bloom_proba: f32,
-    pub mating_freq: SqlDuration,
-    pub mating_duration: SqlDuration,
-    pub fruit_duration: SqlDuration,
+    pub mating_freq: f32,
+    pub mating_duration: f32,
+    pub fruit_duration: f32,
     pub mating_distance: f32,
-    pub overcrowd_distance: f32
+    pub crowd_distance: f32
 }
 
 impl SqlType for PlantSetting {
@@ -43,7 +43,7 @@ impl SqlType for PlantSetting {
             mating_duration: row.get("mating_duration"),
             fruit_duration: row.get("fruit_duration"),
             mating_distance: row.get("mating_distance"),
-            overcrowd_distance: row.get("overcrowd_distance")
+            crowd_distance: row.get("crowd_distance")
         }
     }
 
@@ -64,7 +64,7 @@ impl SqlType for PlantSetting {
             "mating_duration",
             "fruit_duration",
             "mating_distance",
-            "overcrowd_distance"
+            "crowd_distance"
         ]
     }
 
@@ -85,7 +85,7 @@ impl SqlType for PlantSetting {
             &self.mating_duration,
             &self.fruit_duration,
             &self.mating_distance,
-            &self.overcrowd_distance
+            &self.crowd_distance
         ]
     }
 }

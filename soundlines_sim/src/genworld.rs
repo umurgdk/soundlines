@@ -20,7 +20,7 @@ use sim_entity::SimEntity;
 use helpers::*;
 use context::SimContext;
 
-pub fn run(connection_pool: Pool) -> Result<(), Box<Error>> {
+pub fn run(connection_pool: Pool, clear: bool) -> Result<(), Box<Error>> {
     let ctx = SimContext {
         time_scale: 4.0,
         ..SimContext::default()
@@ -36,9 +36,11 @@ pub fn run(connection_pool: Pool) -> Result<(), Box<Error>> {
     let cells = conn.all::<Cell>()?;
     let plant_settings = conn.all::<PlantSetting>()?;
 
-    conn.delete_all::<Dna>()?;
-    conn.delete_all::<Entity>()?;
-    conn.delete_all::<Seed>()?;
+    if clear {
+        conn.delete_all::<Dna>()?;
+        conn.delete_all::<Entity>()?;
+        conn.delete_all::<Seed>()?;
+    }
 
     let mut dnas_to_create = Vec::with_capacity(cells.len() * 2);
     let mut seed_locations = Vec::with_capacity(cells.len() * 2);
@@ -64,8 +66,7 @@ pub fn run(connection_pool: Pool) -> Result<(), Box<Error>> {
         cell_ids.push(cell.id);
     }
 
-    conn.insert_batch(&dnas_to_create)?;
-    let dnas = conn.all::<Dna>()?;
+    let dnas = conn.insert_batch_return(&dnas_to_create, true)?;
 
     let seeds_to_insert: Vec<Seed> = 
         dnas.into_iter()

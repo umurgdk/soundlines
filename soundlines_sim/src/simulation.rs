@@ -30,12 +30,7 @@ use sim_dna::SimDna;
 use sim_seed::SimSeed;
 use sim_geo::get_seed_location;
 
-pub fn run(connection_pool: Pool) -> Result<(), Box<Error>>{
-    let ctx = SimContext {
-        time_scale: 60.0,
-        ..SimContext::default()
-    };
-
+pub fn run(connection_pool: Pool, ctx: SimContext) -> Result<(), Box<Error>>{
     let connection_pool = Arc::new(connection_pool);
     let conn = connection_pool.get()?;
 

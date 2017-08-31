@@ -40,7 +40,7 @@ pub fn location(conn: DbConn) -> Result<Json> {
 
 	let mut locations = vec![];
 	for gps_reading in gps_readings.into_iter() {
-		let CellNeighbours { cells, entities, current_cell_id } =
+		let CellNeighbours { cells, entities, seeds, current_cell_id } =
 			Cell::find_neighbors(&conn, &gps_reading.point, 55.0)?;
 
 		let neighbors = cells.into_iter().map(|(_, c)| c.id as i64).collect::<Vec<_>>();

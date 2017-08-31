@@ -7,6 +7,7 @@ use postgres::types::INTERVAL;
 use postgres::types::IsNull;
 
 use std::error::Error;
+use std::collections::HashMap;
 use std::result::Result as StdResult;
 use std::ops::Deref;
 
@@ -93,9 +94,11 @@ pub trait QueryExtensions {
     fn first<T: SqlType>(&self) -> Result<Option<T>>;
     fn last<T: SqlType>(&self) -> Result<Option<T>>;
     fn get<T: SqlType>(&self, id: i32) -> Result<Option<T>>;
+    fn filter<T: SqlType>(&self, fields: &[&str], values: &[&ToSql]) -> Result<Vec<T>>;
 
     fn insert<T: SqlType>(&self, value: &T) -> Result<T>;
     fn insert_batch<T: SqlType>(&self, values: &[T]) -> Result<()>;
+    fn insert_batch_return<T: SqlType>(&self, values: &[T], should_return: bool) -> Result<Vec<T>>;
 
     fn update<T: SqlType>(&self, id: i32, value: &T) -> Result<()>;
     fn update_batch<T: SqlType>(&self, ids: &[i32], values: &[T]) -> Result<()>;
@@ -125,6 +128,19 @@ impl QueryExtensions for Connection {
             .map(|rows| rows.try_get(0).map(T::from_sql_row))
     }
 
+    fn filter<T: SqlType>(&self, fields: &[&str], values: &[&ToSql]) -> Result<Vec<T>> {
+        let fields_len = fields.len();
+        let mut identifiers = "".to_string();
+
+        for (i, field) in fields.into_iter().enumerate() {
+            identifiers += &format!("{}=${}{}", field, i + 1, if i == fields_len - 1 { " " } else { " and " });
+        }
+
+        let query = format!("select * from {} where {}", T::table_name(), identifiers);
+        self.query(&query, values)
+            .map(|rows| rows.into_iter().map(T::from_sql_row).collect())
+    }
+
     fn insert<T: SqlType>(&self, value: &T) -> Result<T> {
         let arr = value.to_sql_array();
         let mut values_str = String::with_capacity(arr.len() * 2);
@@ -140,6 +156,10 @@ impl QueryExtensions for Connection {
     }
 
     fn insert_batch<T: SqlType>(&self, values: &[T]) -> Result<()> {
+        self.insert_batch_return(values, false).map(|_| ())
+    }
+
+    fn insert_batch_return<T: SqlType>(&self, values: &[T], should_return: bool) -> Result<Vec<T>> {
         let insert_fields = T::insert_fields();
         let fields_len = insert_fields.len();
 
@@ -150,14 +170,22 @@ impl QueryExtensions for Connection {
 
         let field_names = insert_fields.join(",");
 
-        let query = format!("insert into {} ({}) values ({})", T::table_name(), field_names, value_placeholders);
+        let query = format!("insert into {} ({}) values ({}) {}", T::table_name(), field_names, value_placeholders, if should_return { "returning *" } else { "" });
         let statement = self.prepare(&query)?;
 
+        let mut inserted_values = vec![];
         for value in values.iter() {
-            statement.execute(&value.to_sql_array())?;
+            if should_return {
+                let val = statement.query(&value.to_sql_array())
+                    .map(|rows| T::from_sql_row(rows.get(0)))?;
+
+                inserted_values.push(val);
+            } else {
+                statement.execute(&value.to_sql_array())?;
+            }
         }
 
-        Ok(())
+        Ok(inserted_values)
     }
 
     fn delete<T: SqlType>(&self, id: i32) -> Result<()> {

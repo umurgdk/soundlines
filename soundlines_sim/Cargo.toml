@@ -7,10 +7,12 @@ authors = ["Umur Gedik <umurgdk@gmail.com>"]
 soundlines_core = { path = "../soundlines_core" }
 geo = "*"
 rand = "*"
-ndarray = "*"
 noise = "*"
-cgmath = { version = "0.15.0", features = ["mint"] }
-mint = "*"
-three = { path = "libs/three-rs" }
+cgmath = "0.15.0"
 chrono = "*"
+chrono-tz = "*"
 rayon = "0.8"
+clap = "*"
+
+cron = "*"
+job_scheduler = "*"

@@ -12,6 +12,7 @@ use db::Result;
 use db::Connection;
 use db::extensions::*;
 use db::models::Entity;
+use db::models::Seed;
 
 #[derive(Clone, Debug)]
 pub struct Cell {
@@ -26,43 +27,23 @@ pub struct Cell {
 
 pub struct CellNeighbours {
     pub cells: HashMap<i32, Cell>,
+    pub seeds: Vec<Seed>,
     pub entities: Vec<Entity>,
     pub current_cell_id: i32
 }
 
 const NEIGHBOR_WITH_ENTITIES_QUERY: &'static str = r#"
 select
-       cell.id        as c_id,
-       cell.geom      as c_geom,
-       cell.wifi      as c_wifi,
-       cell.light     as c_light,
-       cell.sound     as c_sound,
-       cell.sns       as c_sns,
-       cell.visit     as c_visit,
-       st_contains(cell.geom, st_setsrid(st_point($1, $2),4326)) as c_current,
-
-       entity.id              as e_id,
-       entity.cell_id         as e_cell_id,
-       entity.point           as e_point,
-       entity.prefab          as e_prefab,
-       entity.setting_id      as e_setting_id,
-       entity.dna_id          as e_dna_id,
-       entity.fitness         as e_fitness,
-       entity.age             as e_age,
-       entity.size            as e_size,
-       entity.life_expectancy as e_life_expectancy,
-       entity.nickname        as e_nickname,
-       entity.start_mating_at as e_start_mating_at,
-       entity.last_seed_at    as e_laast_seed_at
-
-from
-    entities entity
-
-join
-    cells cell on entity.cell_id = cell.id
-
-where
-    st_dwithin(cell.geom::geography, ST_SetSRID(ST_Point($1, $2), 4326)::geography, $3);
+       id        as c_id,
+       geom      as c_geom,
+       wifi      as c_wifi,
+       light     as c_light,
+       sound     as c_sound,
+       sns       as c_sns,
+       visit     as c_visit,
+       st_contains(geom, st_setsrid(st_point($1, $2),4326)) as c_current
+from cells
+where st_dwithin(geom::geography, ST_SetSRID(ST_Point($1, $2), 4326)::geography, $3);
 "#;
 
 impl Cell {
@@ -91,11 +72,12 @@ impl Cell {
     pub fn find_neighbors(conn: &Connection, location: &Point, within: f64) -> Result<CellNeighbours> {
         let mut cells = HashMap::new();
         let mut entities = vec![];
+        let mut seeds = vec![];
         let mut current_cell_id = -1;
 
-        let rows = conn.query(NEIGHBOR_WITH_ENTITIES_QUERY, &[&location.x, &location.y, &within])?;
+        let cell_rows = conn.query(NEIGHBOR_WITH_ENTITIES_QUERY, &[&location.x, &location.y, &within])?;
 
-        for row in rows.into_iter() {
+        for row in cell_rows.into_iter() {
             let cell_id: i32 = row.get::<_, i32>("c_id");
             if !cells.contains_key(&cell_id) {
                 cells.insert(cell_id, Cell {
@@ -113,26 +95,17 @@ impl Cell {
                 current_cell_id = cell_id;
             }
 
-            entities.push(Entity {
-                id: row.get("e_id"),
-                point: row.get("e_point"),
-                prefab: row.get("e_prefab"),
-                cell_id: row.get("e_cell_id"),
-                setting_id: row.get("e_setting_id"),
-                dna_id: row.get("e_dna_id"),
-                fitness: row.get("e_fitness"),
-                age: row.get("e_age"),
-                size: row.get("e_size"),
-                life_expectancy: row.get("e_life_expectancy"),
-                nickname: row.get("e_nickname"),
-                start_mating_at: row.get("e_start_mating_at"),
-                last_seed_at: row.get("e_laast_seed_at")
-            });
+            let mut cell_entities = conn.filter::<Entity>(&["cell_id"], &[&cell_id])?;
+            entities.append(&mut cell_entities);
+
+            let mut cell_seeds = conn.filter::<Seed>(&["cell_id"], &[&cell_id])?;
+            seeds.append(&mut cell_seeds);
         }
 
         Ok(CellNeighbours {
             cells,
             entities,
+            seeds,
             current_cell_id
         })
     }

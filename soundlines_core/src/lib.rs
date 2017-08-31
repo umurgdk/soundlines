@@ -1,3 +1,4 @@
+#![feature(custom_attribute)]
 extern crate chrono;
 #[macro_use]
 extern crate dotenv;

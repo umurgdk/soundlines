@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use rocket_contrib::Json;
 use serde_json::Value;
 
@@ -59,6 +60,10 @@ pub fn gps(auth: Auth, conn: DbConn, mut reading: Json<GpsReadingJson>) -> Resul
     reading.0.user_id = user.id;
 
     let other_users = User::get_all_locations(&*conn, Some(user.id))?;
+    let prefabs = conn.all::<PlantSetting>()?
+        .into_iter()
+        .map(|s| (s.id.unwrap(), s.prefab))
+        .collect::<HashMap<_, _>>();
 
     let gps_reading: GpsReading = reading.0.into_gps_reading(0);
     let gps_reading = conn.insert(&gps_reading)?;
@@ -68,7 +73,14 @@ pub fn gps(auth: Auth, conn: DbConn, mut reading: Json<GpsReadingJson>) -> Resul
         Cell::find_neighbors(&*conn, &gps_reading.point, 55.0)?;
 
     let entities = entities.into_iter().map(Entity::into_json).collect::<Vec<_>>();
-    let seeds = seeds.into_iter().map(Seed::into_json).collect::<Vec<_>>();
+    let seeds = seeds
+        .into_iter()
+        .map(Seed::into_json)
+        .map(|mut j| {
+            j["prefab"] = prefabs[&(j["setting_id"].as_i64().unwrap() as i32)].clone().into();
+            j
+        }).collect::<Vec<_>>();
+
     let cells = cells.into_iter().map(|(_, c)| c.id as i64).collect::<Vec<_>>();
 
     Ok(Json(json!({

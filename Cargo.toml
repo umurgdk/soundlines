@@ -1,2 +1,5 @@
 [workspace]
-members = ["soundlines_core", "soundlines_server", "soundlines_sim", "rocket_jwt"]
+members = ["soundlines_core", "soundlines_server", "soundlines_sim", "soundlines_settings", "rocket_jwt"]
+
+[profile.release]
+debug = true

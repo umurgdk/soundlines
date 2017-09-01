@@ -61,7 +61,11 @@ impl Cell {
     pub fn to_json(&self) -> Value {
         json!({
             "id": self.id as i64,
-            "points": self.geom.rings[0].points.iter().map(|p| [p.x, p.y]).collect::<Vec<_>>()
+            "points": self.geom.rings[0].points.iter().map(|p| [p.x, p.y]).collect::<Vec<_>>(),
+            "light": self.light,
+            "sound": self.sound,
+            "sns": self.sns,
+            "visit": self.visit
         })
     }
 

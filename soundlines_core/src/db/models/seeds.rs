@@ -14,11 +14,12 @@ pub struct Seed {
     pub setting_id: i32,
     pub point: Point,
     pub created_at: DateTime<Utc>,
-    pub age: f32
+    pub age: f32,
+    pub prefab: String
 }
 
 impl Seed {
-    pub fn new(dna_id: i32, location: Point, cell_id: i32, setting_id: i32) -> Self {
+    pub fn new(dna_id: i32, location: Point, cell_id: i32, setting_id: i32, prefab: String) -> Self {
         Self {
             id: None,
             cell_id,
@@ -26,7 +27,8 @@ impl Seed {
             setting_id,
             point: location,
             created_at: Utc::now(),
-            age: 1.0
+            age: 1.0,
+            prefab,
         }
     }
 
@@ -38,7 +40,8 @@ impl Seed {
             "setting_id": self.setting_id,
             "latitude": self.point.y,
             "longitude": self.point.x,
-            "age": self.age
+            "age": self.age,
+            "prefab": self.prefab
         })
     }
 }
@@ -55,14 +58,15 @@ impl SqlType for Seed {
             point: row.get("point"),
             created_at: row.get("created_at"),
             age: row.get("age"),
+            prefab: row.get("prefab")
         }
     }
 
     fn insert_fields() -> Vec<&'static str> {
-        vec![ "cell_id", "dna_id", "setting_id", "point", "created_at", "age" ]
+        vec![ "cell_id", "dna_id", "setting_id", "point", "created_at", "age", "prefab" ]
     }
 
     fn to_sql_array<'a>(&'a self) -> Vec<&'a ToSql> {
-        vec![ &self.cell_id, &self.dna_id, &self.setting_id, &self.point, &self.created_at, &self.age ]
+        vec![ &self.cell_id, &self.dna_id, &self.setting_id, &self.point, &self.created_at, &self.age, &self.prefab ]
     }
 }

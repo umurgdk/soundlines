@@ -32,13 +32,12 @@ pub struct Entity {
 impl Entity {
     pub fn new(location: Point, cell_id: i32, setting: &PlantSetting, dna: &Dna) -> Self {
         let index: u32 = rand::random();
-        let prefab = format!("{}{}", setting.prefab, (index % 3) + 1);
         let nickname = format!("entity-{}", rand::random::<u64>());
 
         Self {
             id: -1,
             point: location,
-            prefab,
+            prefab: setting.prefab.clone(),
             cell_id,
             setting_id: setting.id.expect("Trying to create an entity with unsaved setting (has no id)"),
             dna_id: dna.id,

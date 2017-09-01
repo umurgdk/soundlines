@@ -219,12 +219,12 @@ impl QueryExtensions for Connection {
         let insert_fields = T::insert_fields();
         let fields_len = insert_fields.len();
 
-        let mut set_expressions = "".to_string();
+        let mut set_expressions = "set ".to_string();
         for (i, field) in insert_fields.iter().enumerate() {
-            set_expressions += &format!("set {}=${}{}", field, i + 1, if i == fields_len - 1 { "" } else { ", " });
+            set_expressions += &format!("{}=${}{}", field, i + 1, if i == fields_len - 1 { "" } else { ", " });
         }
 
-        let query = format!("update {} {} where id={}", T::table_name(), set_expressions, fields_len + 1);
+        let query = format!("update {} {} where id=${}", T::table_name(), set_expressions, fields_len + 1);
         let statement = self.prepare(&query)?;
 
         for (id, value) in ids.iter().zip(values.iter()) {

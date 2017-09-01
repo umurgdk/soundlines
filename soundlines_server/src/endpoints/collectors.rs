@@ -76,10 +76,7 @@ pub fn gps(auth: Auth, conn: DbConn, mut reading: Json<GpsReadingJson>) -> Resul
     let seeds = seeds
         .into_iter()
         .map(Seed::into_json)
-        .map(|mut j| {
-            j["prefab"] = prefabs[&(j["setting_id"].as_i64().unwrap() as i32)].clone().into();
-            j
-        }).collect::<Vec<_>>();
+        .collect::<Vec<_>>();
 
     let cells = cells.into_iter().map(|(_, c)| c.id as i64).collect::<Vec<_>>();
 

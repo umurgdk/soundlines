@@ -47,6 +47,7 @@ pub fn run() {
         ])
         .mount("/cells", routes![
             endpoints::cells::index,
+            endpoints::cells::show,
             endpoints::cells::recreate,
             endpoints::cells::cells_at,
         ])

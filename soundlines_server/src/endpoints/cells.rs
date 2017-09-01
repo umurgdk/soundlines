@@ -42,6 +42,13 @@ pub fn index(conn: DbConn) -> Result<Json<Value>> {
     })))
 }
 
+#[get("/<id>")]
+pub fn show(conn: DbConn, id: i32) -> Result<Option<Json<Value>>> {
+    let cell = conn.get::<Cell>(id)?;
+
+    Ok(cell.map(|c| Json(c.to_json())))
+}
+
 #[get("/<latitude>/<longitude>")]
 pub fn cells_at(conn: DbConn, latitude: f64, longitude: f64) -> Result<Json<Value>> {
     use geo::Point as GPoint;

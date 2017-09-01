@@ -162,8 +162,9 @@ pub fn run(connection_pool: Pool, ctx: SimContext) -> Result<(), Box<Error>>{
 
                 // TODO: handle seed thrown outside of the grid
                 if let Some(cell) = cell {
+                    let prefab = plant_settings[&dna.setting_id].prefab.clone();
                     let dna = conn.insert(&dna.dna).expect("Failed to write new seed's dna to the db");
-                    let seed = Seed::new(dna.id, into_core_point(&loc), cell.id, dna.setting_id);
+                    let seed = Seed::new(dna.id, into_core_point(&loc), cell.id, dna.setting_id, prefab);
                     let seed = conn.insert(&seed).expect("Failed to write new seed to db");
                     println!("New seed is thrown at {:?}", seed.point);
                 } else {

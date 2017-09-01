@@ -39,7 +39,7 @@ impl<'d, 's: 'd, 'c> SimSeed<'d, 's, 'c> {
     }
 
     pub fn is_dead(&self) -> bool {
-        self.seed.age >= self.ctx.max_seed_age
+        self.seed.age >= self.ctx.seed_max_age
     }
 
     pub fn update(&mut self) {

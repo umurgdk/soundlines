@@ -1,3 +1,4 @@
+#![feature(custom_attribute)]
 extern crate cgmath;
 extern crate geo;
 extern crate rand;
@@ -23,6 +24,7 @@ mod context;
 mod simulation;
 mod genworld;
 mod snapshot;
+mod randomizer;
 
 mod sim_geo;
 mod sim_entity;
@@ -51,6 +53,9 @@ fn main() {
                          .short("c")
                          .help("deletes previously created entities and seeds")))
 
+        .subcommand(SubCommand::with_name("randomize")
+                    .about("Randomize entities settings (prefabs)"))
+
         .subcommand(SubCommand::with_name("snapshot")
                     .about("Starts taking snapshots of the world (entities, seeds, cells) in intervals")
 
@@ -69,8 +74,8 @@ fn main() {
                          .require_equals(true)
                          .default_value("1.0"))
 
-                    .arg(Arg::with_name("max_seed_age")
-                         .long("max_seed_age")
+                    .arg(Arg::with_name("seed_max_age")
+                         .long("seed_max_age")
                          .help("Any float > 0 to determine how long a seed can survive without being bloomed")
                          .require_equals(true)
                          .default_value("250.0")));
@@ -78,18 +83,24 @@ fn main() {
 
     let matches = app.get_matches();
     let connection_pool = db::init_pool();
+
+    let mut context = context::SimContext::default();
+
     let res: Result<_, _> = match matches.subcommand() {
-        ("simulate", Some(options)) => 
-            simulation::run(connection_pool, context::SimContext {
-                time_scale: value_t_or_exit!(options.value_of("time_scale"), f32).floor(),
-                max_seed_age: value_t_or_exit!(options.value_of("max_seed_age"), f32)
-            }),
+        ("simulate", Some(options)) => {
+            context.time_scale = value_t_or_exit!(options.value_of("time_scale"), f32).floor();
+            context.seed_max_age = value_t_or_exit!(options.value_of("seed_max_age"), f32).floor();
+            simulation::run(connection_pool, context)
+        },
+
+        ("randomize", _) =>
+            randomizer::run(connection_pool),
 
         ("snapshot", Some(options)) =>
             snapshot::run(value_t_or_exit!(options.value_of("interval"), u32)),
 
         ("genworld", Some(options)) => 
-            genworld::run(connection_pool, options.is_present("clear")),
+            genworld::run(connection_pool, context, options.is_present("clear")),
 
         _ => unreachable!()
     };

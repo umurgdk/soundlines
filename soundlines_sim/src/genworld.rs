@@ -20,12 +20,7 @@ use sim_entity::SimEntity;
 use helpers::*;
 use context::SimContext;
 
-pub fn run(connection_pool: Pool, clear: bool) -> Result<(), Box<Error>> {
-    let ctx = SimContext {
-        time_scale: 4.0,
-        ..SimContext::default()
-    };
-
+pub fn run(connection_pool: Pool, ctx: SimContext, clear: bool) -> Result<(), Box<Error>> {
     let conn = connection_pool.get()?;
 
     let parameters = conn.first::<Parameter>()?
@@ -35,6 +30,10 @@ pub fn run(connection_pool: Pool, clear: bool) -> Result<(), Box<Error>> {
 
     let cells = conn.all::<Cell>()?;
     let plant_settings = conn.all::<PlantSetting>()?;
+    let prefabs = plant_settings
+        .iter()
+        .map(|s| (s.id.unwrap(), &s.prefab))
+        .collect::<HashMap<_, _>>();
 
     if clear {
         conn.delete_all::<Dna>()?;
@@ -51,19 +50,16 @@ pub fn run(connection_pool: Pool, clear: bool) -> Result<(), Box<Error>> {
             continue;
         }
 
-        let (location1, location2) = get_random_locations(&cell, cell_size);
-        seed_locations.push(location1);
-        seed_locations.push(location2);
+        for _ in 0..10 {
+            let location = get_random_location(&cell, cell_size);
+            seed_locations.push(location);
 
-        let setting = random_choice(&plant_settings);
-        let dna = SimDna::random_from_setting(setting);
-        dnas_to_create.push(dna.dna);
+            let setting = random_choice(&plant_settings);
+            let dna = SimDna::random_from_setting(setting);
+            dnas_to_create.push(dna.dna);
 
-        let dna = SimDna::random_from_setting(setting);
-        dnas_to_create.push(dna.dna);
-
-        cell_ids.push(cell.id);
-        cell_ids.push(cell.id);
+            cell_ids.push(cell.id);
+        }
     }
 
     let dnas = conn.insert_batch_return(&dnas_to_create, true)?;
@@ -72,8 +68,8 @@ pub fn run(connection_pool: Pool, clear: bool) -> Result<(), Box<Error>> {
         dnas.into_iter()
             .enumerate()
             .map(|(i, dna)| {
-                let setting_id = dna.setting_id;
-                Seed::new(dna.id, seed_locations[i].clone(), cell_ids[i], setting_id)
+                let prefab = prefabs[&dna.setting_id].to_owned();
+                Seed::new(dna.id, seed_locations[i].clone(), cell_ids[i], dna.setting_id, prefab)
             })
             .collect();
 
@@ -84,7 +80,7 @@ pub fn run(connection_pool: Pool, clear: bool) -> Result<(), Box<Error>> {
     Ok(())
 }
 
-fn get_random_locations(cell: &Cell, cell_size: f64) -> (Point, Point) {
+fn get_random_location(cell: &Cell, cell_size: f64) -> Point {
     use rand::Rand;
     use cgmath::Deg;
     use geo::centroid::Centroid;
@@ -99,12 +95,5 @@ fn get_random_locations(cell: &Cell, cell_size: f64) -> (Point, Point) {
     location1 = location1.haversine_destination(90.0, random(0.0, cell_size));
     location1 = location1.haversine_destination(0.0, random(0.0, cell_size));
 
-    let mut location2 = GPoint::new(bbox.xmin, bbox.ymin);
-    location2 = location2.haversine_destination(90.0, random(0.0, cell_size));
-    location2 = location2.haversine_destination(0.0, random(0.0, cell_size));
-
-    (
-        Point::new(location1.x(), location1.y(), Some(4326)), 
-        Point::new(location2.x(), location2.y(), Some(4326))
-    )
+    Point::new(location1.x(), location1.y(), Some(4326))
 }

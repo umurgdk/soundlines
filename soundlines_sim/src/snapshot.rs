@@ -14,6 +14,7 @@ use cron::Schedule;
 use soundlines_core::db::models::*;
 use soundlines_core::db::extensions::*;
 use soundlines_core::db::init_pool;
+use soundlines_core::db::PooledConnection;
 
 pub fn run(interval: u32) -> Result<(), Box<Error>> {
     let mut sched = JobScheduler::new();
@@ -47,10 +48,9 @@ fn snapshot() {
 
     // Taking snapshot of entities
     let conn = pool.get().expect("Failed to get a pooled connection");
-    let entities_thread = thread::spawn(move || snapshot_entities(conn))
+    let entities_thread = thread::spawn(move || snapshot_entities(conn));
 }
 
-fn snapshot_entities(conn: PooledConnection) -> Result {
+fn snapshot_entities(conn: PooledConnection) {
     println!("Snapshotting entities...");
-    Ok(())
 }

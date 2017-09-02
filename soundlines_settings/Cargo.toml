@@ -1,7 +1,0 @@
-[package]
-name = "soundlines_settings"
-version = "0.1.0"
-authors = ["Umur Gedik <umurgdk@gmail.com>"]
-
-[dependencies]
-soundlines_core = { path = "../soundlines_core" }

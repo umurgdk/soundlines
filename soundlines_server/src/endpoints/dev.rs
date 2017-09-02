@@ -34,6 +34,13 @@ pub fn update_version(content: String) -> Result<String, io::Error> {
 #[get("/settings")]
 pub fn get_settings(conn: DbConn) -> DbResult<Json<Vec<PlantSetting>>> {
     let settings = conn.all::<PlantSetting>()?;
-    println!("Hello");
     Ok(Json(settings))
+}
+
+#[put("/settings/<setting_id>", data="<setting>")]
+pub fn update_setting(conn: DbConn, setting_id: i32, setting: Json<PlantSetting>) -> DbResult<()> {
+    let setting = setting.into_inner();
+    let _ = conn.update(setting_id, &setting)?;
+
+    Ok(())
 }

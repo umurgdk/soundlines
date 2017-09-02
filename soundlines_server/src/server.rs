@@ -68,7 +68,8 @@ pub fn run() {
         .mount("/dev", routes![
             endpoints::dev::get_version,
             endpoints::dev::update_version,
-            endpoints::dev::get_settings
+            endpoints::dev::get_settings,
+            endpoints::dev::update_setting
         ])
         .catch(errors![error, error_401, error_500])
         .manage(db_pool)

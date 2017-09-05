@@ -7,6 +7,7 @@ use db::Result;
 use db::Connection;
 use db::extensions::*;
 use db::models::default_user_id;
+use db::models::Cell;
 
 #[derive(Clone)]
 pub struct GpsReading {
@@ -35,6 +36,10 @@ impl GpsReading {
             order by created_at desc;
         "#, &[])
             .map(|rows| rows.into_iter().map(GpsReading::from_sql_row).collect::<Vec<_>>())
+    }
+
+    pub fn get_cell(&self, conn: &Connection) -> Result<Option<Cell>> {
+        Cell::find_containing_core(conn, &self.point)
     }
 }
 

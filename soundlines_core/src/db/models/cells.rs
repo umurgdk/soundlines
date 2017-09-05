@@ -18,11 +18,21 @@ use db::models::Seed;
 pub struct Cell {
     pub id: i32,
     pub geom: Polygon,
-  	pub wifi: f32,
-  	pub light: f32,
-  	pub sound: f32,
-  	pub sns: i32,
-  	pub visit: i32
+
+    pub wifi: f32,
+    pub wifi_total: f32,
+    pub wifi_count: f32,
+
+    pub light: f32,
+    pub light_total: f32,
+    pub light_count: f32,
+
+    pub sound: f32,
+    pub sound_total: f32,
+    pub sound_count: f32,
+
+    pub sns: i32,
+    pub visit: i32
 }
 
 pub struct CellNeighbours {
@@ -33,15 +43,7 @@ pub struct CellNeighbours {
 }
 
 const NEIGHBOR_WITH_ENTITIES_QUERY: &'static str = r#"
-select
-       id        as c_id,
-       geom      as c_geom,
-       wifi      as c_wifi,
-       light     as c_light,
-       sound     as c_sound,
-       sns       as c_sns,
-       visit     as c_visit,
-       st_contains(geom, st_setsrid(st_point($1, $2),4326)) as c_current
+select *, st_contains(geom, st_setsrid(st_point($1, $2),4326)) as c_current
 from cells
 where st_dwithin(geom::geography, ST_SetSRID(ST_Point($1, $2), 4326)::geography, $3);
 "#;
@@ -62,8 +64,19 @@ impl Cell {
         json!({
             "id": self.id as i64,
             "points": self.geom.rings[0].points.iter().map(|p| [p.x, p.y]).collect::<Vec<_>>(),
+
             "light": self.light,
+            "light_total": self.light_total,
+            "light_count": self.light_count,
+
             "sound": self.sound,
+            "sound_total": self.sound_total,
+            "sound_count": self.sound_count,
+
+            "wifi": self.wifi,
+            "wifi_total": self.wifi_total,
+            "wifi_count": self.wifi_count,
+
             "sns": self.sns,
             "visit": self.visit
         })
@@ -82,16 +95,25 @@ impl Cell {
         let cell_rows = conn.query(NEIGHBOR_WITH_ENTITIES_QUERY, &[&location.x, &location.y, &within])?;
 
         for row in cell_rows.into_iter() {
-            let cell_id: i32 = row.get::<_, i32>("c_id");
+            let cell_id: i32 = row.get::<_, i32>("id");
             if !cells.contains_key(&cell_id) {
                 cells.insert(cell_id, Cell {
                     id: cell_id,
-                    geom: row.get("c_geom"),
-                    wifi: row.get("c_wifi"),
-                    light: row.get("c_light"),
-                    sound: row.get("c_sound"),
-                    sns: row.get("c_sns"),
-                    visit: row.get("c_visit"),
+                    geom: row.get("geom"),
+                    wifi: row.get("wifi"),
+                    wifi_total: row.get("wifi_total"),
+                    wifi_count: row.get("wifi_count"),
+
+                    light: row.get("light"),
+                    light_total: row.get("light_total"),
+                    light_count: row.get("light_count"),
+
+                    sound: row.get("sound"),
+                    sound_total: row.get("sound_total"),
+                    sound_count: row.get("sound_count"),
+
+                    sns: row.get("sns"),
+                    visit: row.get("visit"),
                 });
             }
 
@@ -122,8 +144,14 @@ impl SqlType for Cell {
             id: row.get("id"),
             geom: row.get("geom"),
   	        wifi: row.get("wifi"),
+  	        wifi_total: row.get("wifi_total"),
+  	        wifi_count: row.get("wifi_count"),
   	        light: row.get("light"),
+  	        light_total: row.get("light_total"),
+  	        light_count: row.get("light_count"),
   	        sound: row.get("sound"),
+  	        sound_total: row.get("sound_total"),
+  	        sound_count: row.get("sound_count"),
   	        sns: row.get("sns"),
   	        visit: row.get("visit")
         }
@@ -133,19 +161,31 @@ impl SqlType for Cell {
         vec![
             "geom",
   	        "wifi",
+  	        "wifi_total",
+  	        "wifi_count",
   	        "light",
+  	        "light_total",
+  	        "light_count",
   	        "sound",
+  	        "sound_total",
+  	        "sound_count",
   	        "sns",
   	        "visit"
         ] 
     }
-    
+
     fn to_sql_array<'a>(&'a self) -> Vec<&'a ToSql> {
         vec![
             &self.geom,
   	        &self.wifi,
+  	        &self.wifi_total,
+  	        &self.wifi_count,
   	        &self.light,
+  	        &self.light_total,
+  	        &self.light_count,
   	        &self.sound,
+  	        &self.sound_total,
+  	        &self.sound_count,
   	        &self.sns,
   	        &self.visit
         ]

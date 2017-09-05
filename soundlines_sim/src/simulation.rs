@@ -34,12 +34,12 @@ pub fn run(connection_pool: Pool, ctx: SimContext) -> Result<(), Box<Error>>{
     let connection_pool = Arc::new(connection_pool);
     let conn = connection_pool.get()?;
 
-    let plant_settings = conn.all::<PlantSetting>()?
-        .into_iter()
-        .map(|s| (s.id.unwrap(), s))
-        .collect::<HashMap<_, _>>();
-
     loop {
+        let plant_settings = conn.all::<PlantSetting>()?
+            .into_iter()
+            .map(|s| (s.id.unwrap(), s))
+            .collect::<HashMap<_, _>>();
+
         let cells = conn.all::<Cell>()?
             .into_iter()
             .map(|c| (c.id, c))
@@ -136,7 +136,7 @@ pub fn run(connection_pool: Pool, ctx: SimContext) -> Result<(), Box<Error>>{
                     let entity1 = &entities[&entity_id];
                     let entity2 = &entities[matched_id];
 
-                    let wind = Vector2::<f64>::rand(&mut rng).normalize_to(25.0);
+                    let wind = Vector2::<f64>::rand(&mut rng).normalize_to(30.0);
                     let seed_location = get_seed_location(entity1, entity2, wind);
                     let child_dna = entity1.dna.reproduce(entity2.dna);
 

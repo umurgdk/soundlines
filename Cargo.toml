@@ -1,5 +1,2 @@
 [workspace]
 members = ["soundlines_core", "soundlines_server", "soundlines_sim", "rocket_jwt"]
-
-[profile.release]
-debug = true

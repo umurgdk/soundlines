@@ -24,5 +24,5 @@ pub fn get_seed_location(from: &SimEntity, to: &SimEntity, wind: Vector2<f64>) -
     let wind = wind.normalize();
     let angle: Deg<f64> = Rad(f64::consts::FRAC_PI_2 - f64::atan(wind.y / wind.x)).into();
 
-    center.haversine_destination(angle.0, magnitude * 0.5)
+    center.haversine_destination(angle.0, magnitude)
 }

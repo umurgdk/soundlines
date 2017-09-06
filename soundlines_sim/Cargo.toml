@@ -13,6 +13,8 @@ chrono = "*"
 chrono-tz = "*"
 rayon = "0.8"
 clap = "*"
+serde = "*"
+serde_json = "*"
 
 cron = "*"
 job_scheduler = "*"

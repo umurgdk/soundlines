@@ -3,6 +3,12 @@ use std::sync::Arc;
 use std::error::Error;
 use std::time::Instant;
 use std::time::Duration;
+use std::fs::File;
+use std::io::Write;
+use std::process;
+
+use serde_json;
+use serde_json::Value as JValue;
 
 use job_scheduler::Job;
 use job_scheduler::JobScheduler;
@@ -13,10 +19,10 @@ use cron::Schedule;
 
 use soundlines_core::db::models::*;
 use soundlines_core::db::extensions::*;
-use soundlines_core::db::init_pool;
+use soundlines_core::db::init_connection;
 use soundlines_core::db::PooledConnection;
 
-pub fn run(interval: u32) -> Result<(), Box<Error>> {
+pub fn run(interval: u32, snapshots_dir: String) -> Result<(), Box<Error>> {
     let mut sched = JobScheduler::new();
 
     // Every hour
@@ -29,7 +35,12 @@ pub fn run(interval: u32) -> Result<(), Box<Error>> {
 
     println!("");
 
-    sched.add(Job::new(schedule, snapshot));
+    sched.add(Job::new(schedule, || {
+        if let Err(err) = snapshot(&snapshots_dir) {
+            on_error(&err);
+            process::exit(1);   
+        }
+    }));
 
     // Run forever
     loop {
@@ -40,17 +51,41 @@ pub fn run(interval: u32) -> Result<(), Box<Error>> {
     unreachable!()
 }
 
-fn snapshot() {
+fn snapshot(output_directory: &str) -> Result<(), Box<Error>> {
     let now = Utc::now().with_timezone(&Japan);
     println!("Taking snapshot for {}", now);
 
-    let pool = init_pool();
+    let conn = init_connection();
 
     // Taking snapshot of entities
-    let conn = pool.get().expect("Failed to get a pooled connection");
-    let entities_thread = thread::spawn(move || snapshot_entities(conn));
+    let (entities, seeds, cells, users) = (
+        conn.all::<Entity>()?.into_iter().map(|e| e.into_json()).collect::<Vec<_>>(),
+        conn.all::<Seed>()?.into_iter().map(|s| s.into_json()).collect::<Vec<_>>(),
+        conn.all::<Cell>()?.into_iter().map(|c| c.into_json()).collect::<Vec<_>>(),
+        User::get_all_locations(&conn, None)?
+    );
+
+    let json = json!({
+        "entities": entities,
+        "seeds": seeds,
+        "cells": cells,
+        "users": users
+    });
+
+    let json_output = serde_json::to_string(&json)?;
+
+    let formatted_date = now.format("%Y_%m_%d_%H_%M_%S");
+    let file_path = format!("{}/{}.json", output_directory, formatted_date);
+    let mut file = File::create(&file_path)?;
+    file.write_all(json_output.as_bytes())?;
+
+    println!("Snapshot created ");
+
+    Ok(())
 }
 
-fn snapshot_entities(conn: PooledConnection) {
-    println!("Snapshotting entities...");
+fn on_error(err: &Box<Error>) {
+    eprintln!("ERROR :: {} :: {}", err.description(), if let Some(err) = err.cause() { err.description() } else { "" } );
+    process::exit(1);
 }
+

@@ -2,7 +2,9 @@ use std::io;
 use std::io::Read;
 use std::io::Write;
 use std::fs::File;
+use std::path::Path;
 
+use rocket::response::NamedFile;
 use rocket_contrib::Json;
 
 use db_guard::*;
@@ -43,4 +45,10 @@ pub fn update_setting(conn: DbConn, setting_id: i32, setting: Json<PlantSetting>
     let _ = conn.update(setting_id, &setting)?;
 
     Ok(())
+}
+
+#[get("/snapshot/<time>")]
+pub fn get_snapshot(time: String) -> io::Result<NamedFile> {
+    let path = Path::new("snapshots").join(time).with_extension("json");
+    NamedFile::open(&path)
 }

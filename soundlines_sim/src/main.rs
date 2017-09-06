@@ -17,6 +17,10 @@ extern crate job_scheduler;
 
 extern crate soundlines_core;
 
+extern crate serde;
+#[macro_use]
+extern crate serde_json;
+
 mod helpers;
 mod constants;
 mod context;
@@ -59,6 +63,12 @@ fn main() {
         .subcommand(SubCommand::with_name("snapshot")
                     .about("Starts taking snapshots of the world (entities, seeds, cells) in intervals")
 
+                    .arg(Arg::with_name("directory")
+                         .long("directory")
+                         .help("Output directory where the snapshot json files going to be written")
+                         .require_equals(true)
+                         .default_value("snapshots"))
+
                     .arg(Arg::with_name("interval")
                          .long("interval")
                          .help("Any integer in units of minutes")
@@ -97,7 +107,8 @@ fn main() {
             randomizer::run(connection_pool),
 
         ("snapshot", Some(options)) =>
-            snapshot::run(value_t_or_exit!(options.value_of("interval"), u32)),
+            snapshot::run(value_t_or_exit!(options.value_of("interval"), u32),
+                          value_t_or_exit!(options.value_of("directory"), String)),
 
         ("genworld", Some(options)) => 
             genworld::run(connection_pool, context, options.is_present("clear")),

@@ -45,8 +45,8 @@ impl User {
                     let point: Point = row.get("point");
                     UserLocation {
                         id: row.get("user_id"),
-                        latitude: point.x,
-                        longitude: point.y
+                        latitude: point.y,
+                        longitude: point.x
                     }
                 }).collect()
             })

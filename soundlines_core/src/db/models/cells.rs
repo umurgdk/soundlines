@@ -49,6 +49,16 @@ where st_dwithin(geom::geography, ST_SetSRID(ST_Point($1, $2), 4326)::geography,
 "#;
 
 impl Cell {
+	pub fn find_by_ids(conn: &Connection, ids: &[i32]) -> Result<Vec<Cell>> {
+		let ids_arr = ids.iter().fold("".to_string(), |s, id| format!("{}{}{}", s, if s.len() > 0 { "," } else { "" },  id));
+		let query = format!("select * from cells where id in ({})", ids_arr);
+
+		println!("Query: {}", query);
+
+		conn.query(&query, &[])
+			.map(|rows| rows.into_iter().map(Cell::from_sql_row).collect())
+	}
+
     pub fn find_containing(conn: &Connection, point: &GPoint<f64>) -> Result<Option<Cell>> {
         let point = Point::new(point.x(), point.y(), Some(4326));
         conn.query("select * from cells where ST_Contains(geom, $1) LIMIT 1", &[&point])

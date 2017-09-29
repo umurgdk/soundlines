@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::collections::HashMap;
 
 use rocket::http::Status;
@@ -62,6 +63,69 @@ pub fn get(_auth: Auth, conn: DbConn, count: u32) -> DbResult<Json<Value>> {
 		Seed::new(dnas[i].id, location, cell.id, dnas[i].setting_id, prefabs[&dnas[i].setting_id].to_owned())
 			.into_json()
 	}).collect::<Vec<_>>();
+
+	Ok(Json(json!({
+		"seeds": seeds
+	})))
+}
+
+#[derive(Deserialize)]
+pub struct DeployPayload {
+	pub count: u32,
+	pub cell_ids: Vec<i32>,
+	pub prefab: Option<String>
+}
+
+#[post("/deploy", data = "<payload>")]
+pub fn deploy(conn: DbConn, payload: Json<DeployPayload>) -> Result<Json, Failure> {
+	let DeployPayload { count, cell_ids, prefab } = payload.into_inner();
+
+	println!("Getting plant settings");
+	let plant_settings = if prefab.is_some() {
+		let setting = PlantSetting::find_by_prefab(&prefab.unwrap(), &*conn)
+			.map_err(|_| Failure(Status::InternalServerError))?
+			.ok_or(Failure(Status::BadRequest))?;
+
+		vec![setting]
+	} else {
+		conn.all().map_err(|_| Failure(Status::InternalServerError))?
+	};
+
+	let prefabs = plant_settings.iter().map(|setting| {
+		(setting.id.unwrap(), &setting.prefab)
+	}).collect::<HashMap<_, _>>();
+
+	println!("Getting cells");
+	let cells = Cell::find_by_ids(&*conn, &cell_ids)
+		.map_err(|_| Failure(Status::InternalServerError))?;
+
+	let mut dnas_to_insert = Vec::<Dna>::with_capacity(count as usize);
+	let mut locations = Vec::<Point>::with_capacity(count as usize);
+	let mut cell_ids = Vec::<i32>::with_capacity(count as usize);
+
+	for cell in cells {
+		for _ in 0..count {
+			let SeedDraft { dna, location, cell_id } = generate_seed(&plant_settings, &cell);
+			dnas_to_insert.push(dna);
+			locations.push(location);
+			cell_ids.push(cell.id);
+		}
+	}
+
+	println!("Inserting dnas");
+	let dnas: Vec<Dna> = conn.insert_batch_return(&dnas_to_insert, true)
+		.map_err(|_| Failure(Status::InternalServerError))?;
+
+	println!("Inserting seeds");
+	let seeds = locations.into_iter().enumerate().map(|(i, location)| {
+		Seed::new(dnas[i].id, location, cell_ids[i], dnas[i].setting_id, prefabs[&dnas[i].setting_id].to_owned())
+	}).collect::<Vec<_>>();
+
+	let seeds = conn.insert_batch_return(&seeds, true)
+		.map_err(|_| Failure(Status::InternalServerError))?
+		.into_iter()
+		.map(Seed::into_json)
+		.collect::<Vec<_>>();
 
 	Ok(Json(json!({
 		"seeds": seeds

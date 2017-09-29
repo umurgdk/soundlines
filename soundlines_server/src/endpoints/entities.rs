@@ -1,7 +1,13 @@
+use std::result::Result as StdResult;
+
+use rocket::response::status;
+use rocket::http::Status;
+use rocket::response::Failure;
 use rocket_contrib::Json;
 
 use soundlines_core::db::Result;
 use soundlines_core::db::extensions::*;
+use soundlines_core::db::models::Dna;
 use soundlines_core::db::models::Entity;
 
 use db_guard::*;
@@ -43,4 +49,16 @@ pub fn index(conn: DbConn) -> Result<Json> {
     Ok(Json(json!({
         "entities": entities
     })))
+}
+
+#[delete("/<id>")]
+pub fn delete(conn: DbConn, id: i32) -> StdResult<status::NoContent, Failure> {
+    let entity = conn.get::<Entity>(id)
+	    .map_err(|_| Failure(Status::InternalServerError))?
+        .ok_or(Failure(Status::BadRequest))?;
+
+    conn.delete::<Entity>(id).map_err(|_| Failure(Status::InternalServerError))?;
+    conn.delete::<Dna>(entity.dna_id).map_err(|_| Failure(Status::InternalServerError))?;
+
+	Ok(status::NoContent)
 }

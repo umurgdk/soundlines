@@ -52,11 +52,13 @@ pub fn run() {
         .mount("/entities", routes![
             endpoints::entities::generate,
             endpoints::entities::index,
+            endpoints::entities::delete
         ])
         .mount("/seeds", routes![
             endpoints::seeds::pickup,
             endpoints::seeds::spread,
-            endpoints::seeds::get
+            endpoints::seeds::get,
+            endpoints::seeds::deploy
         ])
         .mount("/dev", routes![
             endpoints::dev::get_version,

@@ -23,6 +23,13 @@ pub struct PlantSetting {
     pub crowd_distance: f32
 }
 
+impl PlantSetting {
+    pub fn find_by_prefab(prefab: &str, conn: &::db::Connection) -> ::db::Result<Option<PlantSetting>> {
+        conn.query("select * from settings where prefab=$1", &[&prefab])
+            .map(|rows| rows.try_get(0).map(PlantSetting::from_sql_row))
+    }
+}
+
 impl SqlType for PlantSetting {
     fn table_name() -> &'static str { "settings" }
     fn from_sql_row<'a>(row: Row<'a>) -> Self {

@@ -1,0 +1,16 @@
+[package]
+authors = ["Austin Hellyer <hello@austinhellyer.me>"]
+description = "An unofficial Rust wrapper for the forecast.io API."
+documentation = "https://docs.austinhellyer.me/forecast_io/"
+homepage = "https://github.com/zeyla/forecast.io.rs"
+license = "ISC"
+keywords = ["api", "forecast", "forecast_io", "weather"]
+name = "forecast_io"
+readme = "README.md"
+repository = "https://github.com/zeyla/forecast.io.rs.git"
+version = "0.4.0"
+
+[dependencies]
+hyper = "0.10"
+hyper-native-tls = "*"
+serde_json = "0.8"

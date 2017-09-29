@@ -6,7 +6,6 @@ use std::error::Error;
 use std::mem;
 
 use geo::Point;
-use geo::Polygon;
 use geo::haversine_distance::HaversineDistance;
 
 use rand;
@@ -154,7 +153,7 @@ pub fn run(connection_pool: Pool, ctx: SimContext) -> Result<(), Box<Error>>{
         // create seeds
         new_seeds
             .into_par_iter()
-            .for_each_with(connection_pool.clone(), |pool, (dna, setting, loc)| {
+            .for_each_with(connection_pool.clone(), |pool, (dna, _, loc)| {
                 println!("thrown checking {}@{}", loc.y(), loc.x());
 
                 let conn = pool.get().expect("Failed to get connection in parallel seed creation");
@@ -223,10 +222,9 @@ pub fn run(connection_pool: Pool, ctx: SimContext) -> Result<(), Box<Error>>{
                 conn.update(id, &e.entity).expect("Failed to update entity");
             });
 
-        entities = other_entities;
-
         thread::sleep(Duration::from_millis(300));
     }
 
+    #[allow(unreachable_code)]
     Ok(())
 }

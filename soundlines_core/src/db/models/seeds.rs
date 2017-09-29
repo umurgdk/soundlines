@@ -50,7 +50,7 @@ impl SqlType for Seed {
     fn table_name() -> &'static str { "seeds" }
 
     fn from_sql_row<'a>(row: Row<'a>) -> Self {
-        Self { 
+        Self {
             id: Some(row.get("id")),
             cell_id: row.get("cell_id"),
             dna_id: row.get("dna_id"),

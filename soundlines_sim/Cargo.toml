@@ -3,9 +3,17 @@ name = "soundlines_sim"
 version = "0.1.0"
 authors = ["Umur Gedik <umurgdk@gmail.com>"]
 
+[lib]
+name = "soundlines_simlib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "soundlines_sim"
+path = "src/main.rs"
+
 [dependencies]
 soundlines_core = { path = "../soundlines_core" }
-geo = "*"
+geo = "0.4.12"
 rand = "*"
 noise = "*"
 cgmath = "0.15.0"

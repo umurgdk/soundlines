@@ -7,11 +7,8 @@ use cgmath::InnerSpace;
 use geo::Point;
 use geo::LineString;
 use geo::centroid::Centroid;
-use geo::haversine_distance::HaversineDistance;
 use geo::haversine_destination::HaversineDestination;
 
-use sim_dna::SimDna;
-use sim_seed::SimSeed;
 use sim_entity::SimEntity;
 
 pub fn get_seed_location(from: &SimEntity, to: &SimEntity, wind: Vector2<f64>) -> Point<f64> {

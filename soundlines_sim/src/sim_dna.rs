@@ -54,9 +54,9 @@ impl<'s> SimDna<'s> {
     }
 
     pub fn reproduce(&self, partner: &SimDna) -> SimDna {
+ 		let child_fitness = 100.0;
         let mut child_size = 0.0;
  		let mut child_life_expectancy = 0.0;
- 		let mut child_fitness = 0.0;
  		let mut child_growth_rate = 0.0;
  		let mut child_aging_rate = 0.0;
  		let mut child_stress_rate = 0.0;
@@ -67,15 +67,6 @@ impl<'s> SimDna<'s> {
  		} else if self.dna.size <= partner.dna.size {
    			child_size = partner.dna.size * GENETIC_BIAS + self.dna.size * (1.0 - GENETIC_BIAS);
  		}
-
- 		// fitness
- 		if self.dna.fitness > partner.dna.fitness {
-    		child_fitness = self.dna.fitness * GENETIC_BIAS + partner.dna.fitness * (1.0 - GENETIC_BIAS);
- 		} else if self.dna.fitness <= partner.dna.fitness {
-            child_fitness = partner.dna.fitness * GENETIC_BIAS + self.dna.fitness * (1.0 - GENETIC_BIAS);
- 		}
-
- 		child_fitness  = 100.0;
 
  		//growthrate
  		if self.dna.growth_rate > partner.dna.growth_rate {

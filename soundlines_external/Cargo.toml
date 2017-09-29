@@ -1,0 +1,20 @@
+[package]
+name = "soundlines_external"
+version = "0.1.0"
+authors = ["Umur Gedik <umurgdk@gmail.com>"]
+
+[dependencies]
+serde = "*"
+serde_derive = "*"
+serde_json = "*"
+soundlines_core = { path = "../soundlines_core" }
+egg-mode = { git = "https://github.com/umurgdk/twitter-rs", branch = "public_search_result_ids" }
+cron = "*"
+job_scheduler = "*"
+chrono = "0.4"
+chrono-tz = "*"
+itertools = "*"
+error-chain = "*"
+forecast_io = { path = "./libs/forecast_io" }
+log = "0.3.8"
+env_logger = "*"

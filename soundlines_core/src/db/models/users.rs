@@ -5,7 +5,6 @@ use chrono::prelude::*;
 use db::Result;
 use db::Connection;
 use db::extensions::*;
-use db::models::GpsReading;
 
 #[derive(Serialize, Deserialize)]
 pub struct User {
@@ -26,9 +25,10 @@ impl SqlType for User {
 
 #[derive(Serialize, Deserialize)]
 pub struct UserLocation {
-    id: i32,
-    latitude: f64,
-    longitude: f64
+    pub id: i32,
+    pub latitude: f64,
+    pub longitude: f64,
+    pub cell_id: i32
 }
 
 impl User {
@@ -38,15 +38,26 @@ impl User {
 
         let except_id = except.unwrap_or(-1);
 
-        let three_seconds_before = Utc::now() - Duration::seconds(3) - Duration::milliseconds(10);
-        conn.query("select * from gps_readings where created_at >= $1 and user_id != $2", &[&three_seconds_before, &except_id])
+        let three_seconds_before = Utc::now() - Duration::seconds(30) - Duration::milliseconds(10);
+
+		let query = r#"
+		    select gps_readings.user_id, gps_readings.point, cells.id as cell_id from gps_readings
+		    inner join cells on st_contains(cells.geom, gps_readings.point)
+		    where created_at >= $1 and user_id != $2"#;
+
+        println!(r#"select gps_readings.user_id, gps_readings.point, cells.id as cell_id from gps_readings
+		    inner join cells on st_contains(cells.geom, gps_readings.point)
+		    where created_at >= {} and user_id != {}"#, three_seconds_before, except_id);
+
+        conn.query(query, &[&three_seconds_before, &except_id])
             .map(|rows| {
                 rows.into_iter().map(|row| {
                     let point: Point = row.get("point");
                     UserLocation {
                         id: row.get("user_id"),
                         latitude: point.y,
-                        longitude: point.x
+                        longitude: point.x,
+                        cell_id: row.get("cell_id")
                     }
                 }).collect()
             })

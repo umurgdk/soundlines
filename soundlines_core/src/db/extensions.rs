@@ -7,7 +7,6 @@ use postgres::types::INTERVAL;
 use postgres::types::IsNull;
 
 use std::error::Error;
-use std::collections::HashMap;
 use std::result::Result as StdResult;
 use std::ops::Deref;
 
@@ -29,7 +28,7 @@ impl SafeRowAccess for Rows {
 }
 
 use std::time::Duration;
-use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
+use byteorder::{BigEndian, ReadBytesExt};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SqlDuration(pub Duration);
@@ -63,7 +62,7 @@ impl FromSql for SqlDuration {
 }
 
 impl ToSql for SqlDuration {
-    fn to_sql(&self, ty: &Type, out: &mut Vec<u8>) -> StdResult<IsNull, Box<Error + 'static + Sync + Send>> {
+    fn to_sql(&self, _: &Type, _: &mut Vec<u8>) -> StdResult<IsNull, Box<Error + 'static + Sync + Send>> {
         Ok(IsNull::No)
     }
 
@@ -74,13 +73,13 @@ impl ToSql for SqlDuration {
         }
     }
 
-    fn to_sql_checked(&self, ty: &Type, out: &mut Vec<u8>) -> StdResult<IsNull, Box<Error + 'static + Sync + Send>> {
+    fn to_sql_checked(&self, _: &Type, _: &mut Vec<u8>) -> StdResult<IsNull, Box<Error + 'static + Sync + Send>> {
         Ok(IsNull::No)
     }
 
 }
 
-pub trait LastByDate { } 
+pub trait LastByDate { }
 
 pub trait SqlType {
     fn table_name() -> &'static str;
@@ -199,8 +198,6 @@ impl QueryExtensions for Connection {
     }
 
     fn update<T: SqlType>(&self, id: i32, value: &T) -> Result<()> {
-        use std::process;
-
         let mut values = value.to_sql_array();
         let values_len = values.len();
         let mut values_str = "set ".to_string();

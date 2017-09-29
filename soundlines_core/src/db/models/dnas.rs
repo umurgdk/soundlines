@@ -1,11 +1,6 @@
 use postgres::rows::Row;
 use postgres::types::ToSql;
-use serde_json::Value;
 
-use std::collections::HashMap;
-
-use db::Result;
-use db::Connection;
 use db::extensions::*;
 
 #[derive(Debug, Clone, Serialize)]

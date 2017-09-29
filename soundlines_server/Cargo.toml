@@ -5,13 +5,13 @@ authors = ["Umur Gedik <umurgdk@gmail.com>"]
 
 [dependencies]
 soundlines_core = { path = "../soundlines_core" }
+soundlines_sim = { path = "../soundlines_sim" }
 chrono = { version = "0.4", features = ["serde"] }
 dotenv = "0.10.1"
 log = "0.3.8"
 env_logger = "*"
 
 geo = "0.4.12"
-egg-mode = { path = "libs/twitter-rs" }
 
 rocket = "0.3"
 rocket_codegen = "0.3"

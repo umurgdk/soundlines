@@ -1,6 +1,3 @@
-use soundlines_core::db::PooledConnection;
-use soundlines_core::db::extensions::*;
-
 #[derive(Debug)]
 pub struct SimContext {
     pub time_scale: f32,

@@ -13,9 +13,6 @@ pub use self::sound_readings::*;
 mod wifi_readings;
 pub use self::wifi_readings::*;
 
-mod parameters;
-pub use self::parameters::*;
-
 mod entities;
 pub use self::entities::*;
 
@@ -30,5 +27,8 @@ pub use self::seeds::*;
 
 mod users;
 pub use self::users::*;
+
+mod weather;
+pub use self::weather::*;
 
 pub fn default_user_id() -> i32 { 1 }

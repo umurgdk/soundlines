@@ -4,13 +4,10 @@ use postgres::types::ToSql;
 use postgis::ewkb::Point;
 
 use db::extensions::*;
-use db::models::default_user_id;
 
 pub struct WifiReading {
     pub id: Option<i32>,
-    #[serde(default="default_user_id")]
     pub user_id: i32,
-    #[serde(default = "Utc::now")]
     pub created_at: DateTime<Utc>,
     pub ssid: String,
     pub level: f32,

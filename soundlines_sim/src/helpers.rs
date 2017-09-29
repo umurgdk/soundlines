@@ -1,17 +1,9 @@
-use std::time::Duration;
-
 use rand;
 use rand::distributions::Range;
 use rand::distributions::IndependentSample;
 
-use chrono::prelude::*;
-
-use noise::Perlin;
-use noise::NoiseModule;
-
 use geo::Point as GPoint;
 use soundlines_core::postgis::ewkb::Point;
-use soundlines_core::postgis::ewkb::Polygon;
 
 pub fn random<T>(min: T, max: T) -> T 
     where T: PartialEq + PartialOrd + rand::distributions::range::SampleRange
@@ -31,7 +23,7 @@ pub fn random_choice<T>(elems: &[T]) -> &T {
     &elems[range.ind_sample(&mut rng)]
 }
 
-pub fn random_choice_with<T, F>(elems: &[T], predicate: F) -> Option<&T> 
+pub fn random_choice_with<T, F>(elems: &[T], predicate: F) -> Option<&T>
     where F: Fn(&T) -> bool
 {
     use std::collections::HashSet;
@@ -53,19 +45,16 @@ pub fn random_choice_with<T, F>(elems: &[T], predicate: F) -> Option<&T>
     None
 }
 
-pub fn noise(x: f32, y: f32) -> f32 {
-    let perlin = Perlin::new();
-    perlin.get([x, y])
+pub fn clamp(val: f32, lower: f32, upper: f32) -> f32 {
+    val.max(lower).min(upper)
+}
+
+pub fn clamp_map(val: f32, lower: f32, upper: f32, map_lower: f32, map_upper: f32) -> f32 {
+    map(clamp(val, lower, upper), lower, upper, map_lower, map_upper)
 }
 
 pub fn map(val: f32, start1: f32, stop1: f32, start2: f32, stop2: f32) -> f32 {
     (val - start1) / (stop1 - start1) * (stop2 - start2) + start2
-}
-
-pub fn since(time: DateTime<Utc>) -> Duration {
-    let now = Utc::now();
-    now.signed_duration_since(time).to_std()
-        .expect("Failed to convert chrono::Duration to std::time::Duration")
 }
 
 pub fn into_core_point(point: &GPoint<f64>) -> Point {

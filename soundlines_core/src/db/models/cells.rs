@@ -60,6 +60,20 @@ impl Cell {
             .map(|rows| rows.try_get(0).map(Cell::from_sql_row))
     }
 
+    pub fn find_containing_batch<P>(conn: &Connection, points: P) -> Result<Vec<Cell>> 
+        where P: Iterator<Item=Point>
+    {
+        let mut cells = vec![];
+
+        for point in points {
+            if let Some(cell) = Self::find_containing_core(conn, &point)? {
+                cells.push(cell);
+            }
+        }
+
+        Ok(cells)
+    }
+
     pub fn to_json(&self) -> Value {
         json!({
             "id": self.id as i64,

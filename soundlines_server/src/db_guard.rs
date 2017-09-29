@@ -7,7 +7,6 @@ use rocket::{Request, State, Outcome};
 use soundlines_core::db::Pool;
 use soundlines_core::db::Connection;
 use soundlines_core::db::PooledConnection;
-use soundlines_core::db::extensions::*;
 
 // Connection request guard type: a wrapper around an r2d2 pooled connection.
 pub struct DbConn(pub PooledConnection);

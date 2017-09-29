@@ -1,16 +1,46 @@
 use std::ops::Deref;
 use std::ops::DerefMut;
 
-use geo::Point;
-
-use soundlines_core::db::models::Dna;
 use soundlines_core::db::models::PlantSetting;
 use soundlines_core::db::models::Seed;
+use soundlines_core::db::models::Dna;
+use soundlines_core::db::models::Cell;
+use soundlines_core::postgis::ewkb::Point;
+use geo::Polygon as GPolygon;
+use geo::Point as GPoint;
 
 use helpers::*;
-use constants::*;
 use sim_dna::SimDna;
 use context::SimContext;
+
+pub struct SeedDraft {
+    pub dna: Dna,
+    pub location: Point,
+    pub cell_id: i32
+}
+
+pub fn generate(plant_settings: &[PlantSetting], cell: &Cell) -> SeedDraft {
+    let location = get_random_location(cell, 50.0);
+    let setting = random_choice(plant_settings);
+    let dna = SimDna::random_from_setting(setting);
+
+    SeedDraft { dna: dna.dna, location, cell_id: cell.id }
+}
+
+fn get_random_location(cell: &Cell, cell_size: f64) -> Point {
+    use geo::boundingbox::BoundingBox;
+    use geo::haversine_destination::HaversineDestination;
+
+    let points: Vec<_> = cell.geom.rings[0].points.iter().map(into_geo_point).collect();
+    let polygon = GPolygon::new(points.into(), vec![]);
+    let bbox = polygon.bbox().expect("Bounding box of the cell");
+
+    let mut location1 = GPoint::new(bbox.xmin, bbox.ymin);
+    location1 = location1.haversine_destination(90.0, random(0.0, cell_size));
+    location1 = location1.haversine_destination(0.0, random(0.0, cell_size));
+
+    Point::new(location1.x(), location1.y(), Some(4326))
+}
 
 pub struct SimSeed<'d, 's: 'd, 'c> {
     pub seed: Seed,

@@ -1,4 +1,3 @@
-use std::time::Duration;
 use postgres::rows::Row;
 use postgres::types::ToSql;
 

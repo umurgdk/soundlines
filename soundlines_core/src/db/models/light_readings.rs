@@ -4,7 +4,6 @@ use postgres::types::ToSql;
 use postgis::ewkb::Point;
 
 use db::extensions::*;
-use db::models::default_user_id;
 
 #[derive(Serialize)]
 pub struct LightReading {

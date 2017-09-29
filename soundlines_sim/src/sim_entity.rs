@@ -1,12 +1,9 @@
 use std::ops::Deref;
 use std::ops::DerefMut;
 
-use chrono::prelude::*;
-
 use soundlines_core::db::models::PlantSetting;
 use soundlines_core::db::models::Entity;
 use soundlines_core::db::models::Cell;
-use soundlines_core::db::models::Dna;
 
 use helpers::*;
 use sim_dna::SimDna;
@@ -35,6 +32,12 @@ impl<'s: 'd, 'd, 'c> DerefMut for SimEntity<'s, 'd, 'c> {
 }
 
 impl<'a: 'd, 'd, 'c> SimEntity<'a, 'd, 'c> {
+	const WIFI_LOW: f32 = -50.0;
+	const WIFI_HIGH: f32 = 50.0;
+
+	const LIGHT_LOW: f32 = 0.0;
+	const LIGHT_HIGH: f32 = 0.0;
+
     pub fn from_entity(entity: Entity, setting: &'a PlantSetting, dna: &'d SimDna<'a>, ctx: &'c SimContext) -> Self {
         Self {
             entity,
@@ -70,10 +73,12 @@ impl<'a: 'd, 'd, 'c> SimEntity<'a, 'd, 'c> {
     }
 
     fn calculate_sensitivity(&self, cell: &Cell) -> f32 {
-        if cell.wifi > 0.5 {
+	    let cell_wifi = clamp_map(cell.wifi, Self::WIFI_LOW, Self::WIFI_HIGH, 0.0, 1.0);
+
+        if cell_wifi > 0.5 {
        		let wifi =  
        			(map(self.setting.wifi_sensitivity, -1.0, 1.0, 0.2, 5.0) *
-       		     map(cell.wifi, 0.0, 1.0, 0.5, 1.0)) / 2.6;
+       		     map(cell_wifi, 0.0, 1.0, 0.5, 1.0)) / 2.6;
 
         	let light = 
         		(map(self.setting.light_sensitivity, -1.0, 1.0, 0.2, 5.0) *
@@ -86,15 +91,15 @@ impl<'a: 'd, 'd, 'c> SimEntity<'a, 'd, 'c> {
         	wifi * light * sound
      	} else {
        		let wifi = 
-       			(map(self.setting.wifi_sensitivity , -1.0, 1.0, 5.0, 0.2) *
-       			 map(cell.wifi, 0.0, 1.0, 0.5, 1.0) ) / 1.3  ;
+       			(map(self.setting.wifi_sensitivity , -1.0, 1.0, 0.2, 5.0) *
+       			 map(cell_wifi, 0.0, 1.0, 0.5, 1.0) ) / 1.3  ;
 
        		let light = 
-       			(map(self.setting.light_sensitivity, -1.0, 1.0, 5.0, 0.2) *
+       			(map(self.setting.light_sensitivity, -1.0, 1.0, 0.2, 5.0) *
        			 map(cell.light, 0.0, 1.0, 0.5, 1.0) ) / 1.3;
 
        		let sound = 
-       			(map(self.setting.sound_sensitivity, -1.0, 1.0, 5.0, 0.2) *
+       			(map(self.setting.sound_sensitivity, -1.0, 1.0, 0.2, 5.0) *
        			 map(cell.sound, 0.0, 1.0, 0.5, 1.0) ) / 1.3 ;
 
         	wifi * light * sound
@@ -102,7 +107,7 @@ impl<'a: 'd, 'd, 'c> SimEntity<'a, 'd, 'c> {
     }
 
     pub fn update_by_neighbors(&mut self, cell: &Cell, neighbor_count: i32) {
-        let sensitivity = self.calculate_sensitivity(cell);
+        let sensitivity = self.calculate_sensitivity(cell).abs();
 
   		self.entity.age += self.dna.aging_rate / sensitivity;
 

@@ -2,33 +2,28 @@
 extern crate cgmath;
 extern crate geo;
 extern crate rand;
-
-#[macro_use]
-extern crate noise;
 extern crate chrono;
 extern crate chrono_tz;
 extern crate rayon;
-
-#[macro_use]
-extern crate clap;
-
 extern crate cron;
 extern crate job_scheduler;
+extern crate noise;
+
+#[macro_use] extern crate serde_json;
+#[macro_use] extern crate clap;
 
 extern crate soundlines_core;
-
-extern crate serde;
-#[macro_use]
-extern crate serde_json;
 
 mod helpers;
 mod constants;
 mod context;
 
 mod simulation;
-mod genworld;
 mod snapshot;
 mod randomizer;
+
+mod genworld;
+mod gencells;
 
 mod sim_geo;
 mod sim_entity;
@@ -49,6 +44,14 @@ fn main() {
     let app = App::new("Soundlines Simulation")
         .version("0.1")
         .setting(AppSettings::SubcommandRequiredElseHelp)
+
+        .subcommand(SubCommand::with_name("gencells")
+                    .about("Creates initial cells")
+                    .arg(Arg::with_name("cell_size")
+                         .help("Sets the cell size")
+                         .takes_value(true)
+                         .default_value("50.0")
+                         .require_equals(true)))
 
         .subcommand(SubCommand::with_name("genworld")
                     .about("Randomly generates seeds")
@@ -111,7 +114,10 @@ fn main() {
                           value_t_or_exit!(options.value_of("directory"), String)),
 
         ("genworld", Some(options)) => 
-            genworld::run(connection_pool, context, options.is_present("clear")),
+            genworld::run(connection_pool,  options.is_present("clear")),
+
+        ("gencells", Some(options)) =>
+            gencells::run(value_t_or_exit!(options.value_of("cell_size"), f64)),
 
         _ => unreachable!()
     };

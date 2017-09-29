@@ -3,10 +3,8 @@ use rand;
 use postgis::ewkb::Point;
 use postgres::rows::Row;
 use postgres::types::ToSql;
-use geo::Point as GPoint;
 
 use serde_json::Value;
-use chrono::prelude::*;
 
 use db::extensions::*;
 use db::models::PlantSetting;
@@ -31,7 +29,6 @@ pub struct Entity {
 
 impl Entity {
     pub fn new(location: Point, cell_id: i32, setting: &PlantSetting, dna: &Dna) -> Self {
-        let index: u32 = rand::random();
         let nickname = format!("entity-{}", rand::random::<u64>());
 
         Self {

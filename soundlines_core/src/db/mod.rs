@@ -8,12 +8,11 @@ use postgres::TlsMode as PTlsMode;
 use dotenv::dotenv;
 
 pub mod models;
-pub mod helpers;
 pub mod extensions;
 
-pub use self::helpers::*;
 pub use self::extensions::*;
 
+pub type Error = postgres::Error;
 pub type Result<T> = postgres::Result<T>;
 pub type Connection = postgres::Connection;
 pub type Pool = r2d2::Pool<ConnectionManager>;

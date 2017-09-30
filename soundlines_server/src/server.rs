@@ -55,6 +55,7 @@ pub fn run() {
             endpoints::entities::delete
         ])
         .mount("/seeds", routes![
+            endpoints::seeds::index,
             endpoints::seeds::pickup,
             endpoints::seeds::spread,
             endpoints::seeds::get,

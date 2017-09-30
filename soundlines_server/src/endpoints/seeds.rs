@@ -21,6 +21,14 @@ use soundlines_simlib::sim_seed::generate as generate_seed;
 use user::Auth;
 use db_guard::DbConn;
 
+#[get("/")]
+pub fn index(conn: DbConn) -> DbResult<Json> {
+	conn.all::<Seed>()
+		.map(|seeds| seeds.into_iter().map(Seed::into_json).collect::<Vec<_>>())
+		.map(|seeds| json!({ "seeds": seeds }))
+		.map(Json)
+}
+
 #[derive(Deserialize)]
 pub struct PickupPayload {
 	id: i32

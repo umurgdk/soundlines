@@ -44,7 +44,7 @@ pub fn location(conn: DbConn) -> Result<Json> {
 	for user_location in user_locations.into_iter() {
 	    let point = Point::new(user_location.longitude, user_location.latitude, Some(4326));
 		let CellNeighbours { cells, entities, seeds, .. } =
-			Cell::find_neighbors(&conn, &point, 55.0)?;
+			Cell::find_neighbors(&conn, &point, 120.0)?;
 
 		let neighbors = cells.into_iter().map(|(_, c)| c.id as i64).collect::<Vec<_>>();
 		let entities = entities.into_iter().map(Entity::into_json).collect::<Vec<_>>();

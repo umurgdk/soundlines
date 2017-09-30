@@ -119,7 +119,7 @@ pub fn light(auth: Auth, conn: DbConn, payload: Json<LightReadingPayload>) -> Re
 }
 
 #[post("/gps", data = "<reading>")]
-pub fn gps(auth: Auth, conn: DbConn, reading: Json<GpsReadingJson>) -> Result<Option<Json<Value>>> {
+pub fn gps(auth: Auth, conn: DbConn, reading: Json<GpsReadingJson>) -> Result<Option<Json>> {
     let user = auth.into_user();
     let mut reading = reading.into_inner();
     reading.user_id = user.id;
@@ -131,7 +131,18 @@ pub fn gps(auth: Auth, conn: DbConn, reading: Json<GpsReadingJson>) -> Result<Op
         Cell::find_neighbors(&*conn, &gps_reading.point, 120.0)?;
 
     if cells.len() == 0 {
-        return Ok(None);
+        return Ok(Some(Json(json!({
+            "user_id": gps_reading.user_id as i64,
+	        "location": {
+	            "latitude": gps_reading.point.y,
+	            "longitude": gps_reading.point.x
+	        },
+	        "others": other_users,
+	        "cell_id": current_cell_id as i64,
+	        "neighbor_cells": cells.iter().map(|(id, _)| *id).collect::<Vec<i32>>(),
+	        "entities": [],
+	        "seeds": []
+        }))));
     }
 
     let same_cell = conn.last::<GpsReading>()?

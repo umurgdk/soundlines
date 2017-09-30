@@ -41,13 +41,10 @@ impl User {
         let three_seconds_before = Utc::now() - Duration::seconds(30) - Duration::milliseconds(10);
 
 		let query = r#"
-		    select gps_readings.user_id, gps_readings.point, cells.id as cell_id from gps_readings
+		    select DISTINCT ON (gps_readings.user_id) user_id, gps_readings.created_at, gps_readings.point, cells.id as cell_id from gps_readings
 		    inner join cells on st_contains(cells.geom, gps_readings.point)
-		    where created_at >= $1 and user_id != $2"#;
-
-        println!(r#"select gps_readings.user_id, gps_readings.point, cells.id as cell_id from gps_readings
-		    inner join cells on st_contains(cells.geom, gps_readings.point)
-		    where created_at >= {} and user_id != {}"#, three_seconds_before, except_id);
+		    where created_at >= $1 and user_id != $2
+		    order by gps_readings.user_id asc, created_at desc"#;
 
         conn.query(query, &[&three_seconds_before, &except_id])
             .map(|rows| {

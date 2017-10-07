@@ -13,12 +13,12 @@ use soundlines_core::postgis::ewkb::LineString;
 use soundlines_core::postgis::ewkb::Polygon;
 use soundlines_core::postgis::ewkb::Point;
 
-use soundlines_core::db::init_connection;
+use soundlines_core::db::connect;
 use soundlines_core::db::models::Cell;
 use soundlines_core::db::extensions::*;
 
 pub fn run(cell_size: f64) -> Result<(), Box<Error>> {
-    let conn = init_connection();
+    let conn = connect();
     let cells = generate_cells(cell_size);
 
     conn.insert_batch(&cells)?;

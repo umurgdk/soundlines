@@ -1,36 +1,27 @@
 use std::env;
-
-use r2d2;
-use r2d2_postgres::PostgresConnectionManager as ConnectionManager;
-use r2d2_postgres::TlsMode;
-use postgres;
-use postgres::TlsMode as PTlsMode;
 use dotenv::dotenv;
+use postgres::TlsMode;
 
-pub mod models;
-pub mod extensions;
+pub use postgres::Connection;
 
-pub use self::extensions::*;
+pub mod cells;
+pub mod entities;
+pub mod seeds;
+pub mod weather;
 
-pub type Error = postgres::Error;
-pub type Result<T> = postgres::Result<T>;
-pub type Connection = postgres::Connection;
-pub type Pool = r2d2::Pool<ConnectionManager>;
-pub type PooledConnection = r2d2::PooledConnection<ConnectionManager>;
+/// Connects to database with `env::var(DATABASE_URL)`
+///
+/// ### Panics
+///
+/// On failed database connection attempt this function panics
+pub fn connect() -> Connection {
+	dotenv().ok();
 
-pub fn init_connection() -> Connection {
-    dotenv().ok();
-
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    Connection::connect(database_url, PTlsMode::None).expect("failed to connect database")
+	let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+	Connection::connect(database_url, TlsMode::None).expect("Connection attempt to postgres db failed")
 }
 
-pub fn init_pool() -> Pool {
-    dotenv().ok();
-
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let config = r2d2::Config::default();
-    let manager = ConnectionManager::new(database_url, TlsMode::None).expect("failed to connect database");
-
-    r2d2::Pool::new(config, manager).expect("Failed to create database pool")
+/// Start listening for notifications in given channel name
+pub fn listen(conn: &Connection, channel: &str) -> ::errors::Result<()> {
+	conn.batch_execute(&format!("listen {}", channel)).map_err(::errors::Error::from)
 }

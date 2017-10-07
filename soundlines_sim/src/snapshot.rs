@@ -16,7 +16,7 @@ use chrono_tz::Japan;
 
 use soundlines_core::db::models::*;
 use soundlines_core::db::extensions::*;
-use soundlines_core::db::init_connection;
+use soundlines_core::db::connect;
 
 pub fn run(interval: u32, snapshots_dir: String) -> Result<(), Box<Error>> {
     let mut sched = JobScheduler::new();
@@ -52,7 +52,7 @@ fn snapshot(output_directory: &str) -> Result<(), Box<Error>> {
     let now = Utc::now().with_timezone(&Japan);
     println!("Taking snapshot for {}", now);
 
-    let conn = init_connection();
+    let conn = connect();
 
     // Taking snapshot of entities
     let (entities, seeds, cells, weather, users) = (

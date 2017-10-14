@@ -9,13 +9,13 @@ pub fn all(conn: &Connection) -> ::errors::Result<::postgres::rows::Rows> {
 			(
 				seeds.data ||
 				jsonb_build_object(
-					'setting', to_jsonb("settings"),
-				    'point', st_asgeojson(seeds.point)::jsonb->'coordinates',
-				    'id', seeds.id
+					'setting', settings_json.data || jsonb_build_object('id', settings_json.id),
+          'point', st_asgeojson(seeds.point)::jsonb->'coordinates',
+          'id', seeds.id
 				)
 			)::text
 		FROM seeds_json AS seeds
-		INNER JOIN settings ON settings.id = seeds.setting_id
+		INNER JOIN settings_json ON settings_json.id = seeds.setting_id
 	"#;
 
 	conn.query(&query, &[]).map_err(|e| e.into())
@@ -24,6 +24,16 @@ pub fn all(conn: &Connection) -> ::errors::Result<::postgres::rows::Rows> {
 pub fn all_hashmap(conn: &Connection) -> ::errors::Result<HashMap<i32, Seed>> {
 	let rows = all(conn)?;
 	let seeds = rows.into_iter().map(|r| ::serde_json::from_str::<Seed>(&r.get::<_, String>(0)).unwrap()).map(|s| (s.id, s)).collect();
+	Ok(seeds)
+}
+
+pub fn all_vec(conn: &Connection) -> ::errors::Result<Vec<Seed>> {
+	use fallible_iterator;
+	use fallible_iterator::FallibleIterator;
+
+	let rows = all(conn)?;
+	let seeds = rows.into_iter().map(|r| ::serde_json::from_str(&r.get::<_, String>(0)));
+	let seeds = fallible_iterator::convert(seeds).collect()?;
 	Ok(seeds)
 }
 
@@ -61,7 +71,7 @@ pub fn get(conn: &Connection, id: i32) -> ::errors::Result<Seed> {
 			)::text
 		FROM seeds_json AS seeds
 		INNER JOIN settings ON settings.id = seeds.setting_id
-		WHERE seeds_json.id = $1
+		WHERE seeds.id = $1
 	"#;
 
 	let rows = conn.query(&query, &[&id])?;
@@ -97,7 +107,7 @@ pub fn batch_update(conn: &Connection, seeds: HashMap<i32, Seed>) -> ::errors::R
 pub fn batch_insert(conn: &Connection, seeds: &[Seed]) -> ::errors::Result<()> {
 	let stmt = conn.prepare("insert into seeds_json (data, setting_id, cell_id, point) values ($1, $2, $3, st_geomfromtext($4, 4326))")?;
 	for seed in seeds {
-		let json = ::serde_json::to_string(seed)?;
+		let json = ::serde_json::to_value(seed)?;
 		let point = format!("POINT({} {})", seed.point[0], seed.point[1]);
 		stmt.execute(&[&json, &seed.setting.id, &seed.cell_id, &point])?;
 	}

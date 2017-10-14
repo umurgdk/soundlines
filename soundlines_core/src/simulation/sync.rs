@@ -8,6 +8,7 @@ use models::*;
 use db;
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all="SCREAMING_SNAKE_CASE")]
 enum DbOperation {
 	Insert,
 	Delete,
@@ -45,7 +46,7 @@ struct DbNotification {
 
 /// Checks if there are any pending/incoming database notifications and updates cached values of
 /// the simulation if necessary
-pub fn handle_notifications(conn: &db::Connection, mut entities: &mut HashMap<i32, Entity>, mut neighbors: &mut HashMap<i32, Vec<i32>>, mut seeds: &mut HashMap<i32, Seed>, mut cells: &mut HashMap<i32, Cell>) -> ::errors::Result<()> {
+pub fn handle_notifications(conn: &db::Connection, entities: &mut HashMap<i32, Entity>, neighbors: &mut HashMap<i32, NeighborEntry>, seeds: &mut HashMap<i32, Seed>, cells: &mut HashMap<i32, Cell>) -> ::errors::Result<()> {
 	use fallible_iterator::FallibleIterator;
 
 	let notifications = conn.notifications();
@@ -54,7 +55,7 @@ pub fn handle_notifications(conn: &db::Connection, mut entities: &mut HashMap<i3
 	// Timeout iterator waits until given duration if there is no notifications pending
 	let mut notification_iter = notifications.timeout_iter(one_millisecond);
 	while let Some(notification) = notification_iter.next()? {
-		process_notification(&conn, notification, &mut entities, &mut neighbors, &mut seeds, &mut cells)?;
+		process_notification(&conn, notification, entities, neighbors, seeds, cells)?;
 	}
 
 	Ok(())
@@ -62,7 +63,7 @@ pub fn handle_notifications(conn: &db::Connection, mut entities: &mut HashMap<i3
 
 /// Updates simulation's cached values on insert and delete operations on selective tables. It may
 /// make new database queries to fetch/update cached data.
-fn process_notification(conn: &db::Connection, pg_notification: Notification, entities: &mut HashMap<i32, Entity>, neighbors: &mut HashMap<i32, Vec<i32>>, seeds: &mut HashMap<i32, Seed>, cells: &mut HashMap<i32, Cell>) -> ::errors::Result<()> {
+fn process_notification(conn: &db::Connection, pg_notification: Notification, entities: &mut HashMap<i32, Entity>, neighbors: &mut HashMap<i32, NeighborEntry>, seeds: &mut HashMap<i32, Seed>, cells: &mut HashMap<i32, Cell>) -> ::errors::Result<()> {
 	if pg_notification.channel != "simulation" {
 		return Ok(());
 	}
@@ -76,8 +77,8 @@ fn process_notification(conn: &db::Connection, pg_notification: Notification, en
 		"entities_json" => handle_entities_notification(conn, notification.operation, notification.id, entities)?,
 		"entity_neighbors" => handle_neighbors_notification(conn, notification.operation, notification.id, neighbors)?,
 		"seeds_json" => handle_seeds_notification(conn, notification.operation, notification.id, seeds)?,
-		"cells" => handle_cells_notification(conn, notification.operation, notification.id, cells)?,
-		"settings" => handle_settings_notification(conn, notification.operation, notification.id, entities, seeds)?,
+		"cells_json" => handle_cells_notification(conn, notification.operation, notification.id, cells)?,
+		"settings_json" => handle_settings_notification(conn, notification.operation, notification.id, entities, seeds)?,
 		_ => warn!("Got a database notification on table {}, don't know what to do...", notification.table)
 	}
 
@@ -94,7 +95,7 @@ fn handle_entities_notification(conn: &db::Connection, operation: DbOperation, s
 	Ok(())
 }
 
-fn handle_neighbors_notification(conn: &db::Connection, operation: DbOperation, subject_id: i32, neighbors: &mut HashMap<i32, Vec<i32>>) -> ::errors::Result<()> {
+fn handle_neighbors_notification(conn: &db::Connection, operation: DbOperation, subject_id: i32, neighbors: &mut HashMap<i32, NeighborEntry>) -> ::errors::Result<()> {
 	match operation {
 		DbOperation::Insert | DbOperation::Update => {neighbors.insert(subject_id, db::entities::get_neighbor(conn, subject_id)?);},
 		DbOperation::Delete => {neighbors.remove(&subject_id);},
@@ -161,21 +162,27 @@ pub fn start_db_writer() -> Sender<DbSyncAction> {
 fn write_to_db(entities: HashMap<i32, Entity>, seeds: HashMap<i32, Seed>, dead_entities: Vec<i32>, bloomed_seeds: Vec<i32>, seed_drafts: Vec<SeedDraft>, entity_drafts: Vec<EntityDraft>) -> ::errors::Result<()> {
 	let timer = ::helpers::new_timer("Synchronizing database");
 
-	// Run udpate queries
-	::crossbeam::scope(|scope| {
-		scope.spawn(move || db::entities::batch_update(&db::connect(), entities).unwrap());
-		scope.spawn(move || db::seeds::batch_update(&db::connect(), seeds).unwrap());
-	});
+	trace!("Going to update {} entities on db", entities.len());
+	trace!("Going to delete {} entities on db", dead_entities.len());
+	trace!("Going to insert {} entities on db", entity_drafts.len());
+	trace!("Going to update {} seeds on db", seeds.len());
+	trace!("Going to delete {} seeds on db", bloomed_seeds.len());
+	trace!("Going to insert {} seeds on db", seed_drafts.len());
 
 	// Do insertions and deletions after updates to prevent any concurrency issues
+	let mut new_entity_ids = Vec::new();
+
 	::crossbeam::scope(|scope| {
 		scope.spawn(move || db::entities::batch_delete(&db::connect(), &dead_entities).unwrap());
 		scope.spawn(move || {
 			let conn = db::connect();
 			let points = entity_drafts.iter().map(|e| e.point.clone()).collect();
 			let cell_ids = db::cells::find_contains_any(&conn, points).unwrap();
+			if entity_drafts.len() > 0 {
+				assert!(cell_ids.len() > 0);
+			}
 			let entities = ::models::make_entities_from_drafts(entity_drafts, &cell_ids);
-			db::entities::batch_insert(&conn, &entities).unwrap();
+			new_entity_ids = db::entities::batch_insert(&conn, &entities).unwrap();
 		});
 
 		scope.spawn(move || db::seeds::batch_delete(&db::connect(), &bloomed_seeds).unwrap());
@@ -186,6 +193,13 @@ fn write_to_db(entities: HashMap<i32, Entity>, seeds: HashMap<i32, Seed>, dead_e
 			let seeds = ::models::make_seeds_from_drafts(seed_drafts, &cell_ids);
 			db::seeds::batch_insert(&conn, &seeds).unwrap();
 		});
+	});
+
+	// Run udpate queries
+	::crossbeam::scope(|scope| {
+		scope.spawn(move || db::entities::batch_update(&db::connect(), entities).unwrap());
+		scope.spawn(move || db::seeds::batch_update(&db::connect(), seeds).unwrap());
+//		scope.spawn(move || db::entities::update_neighbors(&db::connect(), &new_entity_ids, &dead_entities).unwrap());
 	});
 
 	timer_finish!(timer);

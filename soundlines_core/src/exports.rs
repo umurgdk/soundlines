@@ -46,6 +46,19 @@ pub extern fn Java_org_soundlines_visualization_SoundlinesCore_getCells(env: JNI
 	to_jstring(&env, json())
 }
 
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern fn Java_org_soundlines_visualization_SoundlinesCore_getSeeds(env: JNIEnv, _: JClass) -> jstring {
+	let json = || {
+		let conn = unsafe { &CTX.as_ref().unwrap().conn };
+		let seeds = db::seeds::all(conn)?;
+		let seeds_json = seeds.into_iter().map(|r| r.get::<_, String>(0)).collect::<Vec<_>>().join(",");
+		Ok(format!("{{ \"seeds\": [{}] }}", seeds_json))
+	};
+
+	to_jstring(&env, json())
+}
+
 fn to_jstring(env: &JNIEnv, value: ::errors::Result<String>) -> jstring {
 	match value.and_then(|json| env.new_string(json).map_err(::errors::Error::from)) {
 		Ok(json) => json.into_inner(),

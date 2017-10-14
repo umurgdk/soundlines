@@ -8,6 +8,8 @@ pub mod cells;
 pub mod entities;
 pub mod seeds;
 pub mod weather;
+pub mod geometry;
+pub mod plant_setting;
 
 /// Connects to database with `env::var(DATABASE_URL)`
 ///

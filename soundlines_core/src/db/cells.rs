@@ -7,10 +7,13 @@ pub fn all(conn: &Connection) -> ::errors::Result<::postgres::rows::Rows> {
 	let query = r#"
 		select
 			(
-				to_jsonb(cells.*) ||
-				jsonb_build_object('geom', st_asgeojson(geom)::jsonb->'coordinates'->0)
+				data ||
+				jsonb_build_object(
+					'geom', st_asgeojson(geom)::jsonb->'coordinates'->0,
+					'id', id
+				)
 			)::text
-		from cells;
+		from cells_json;
 	"#;
 
 	conn.query(&query, &[]).map_err(|e| e.into())
@@ -32,11 +35,14 @@ pub fn get(conn: &Connection, id: i32) -> ::errors::Result<Cell> {
 	let query = r#"
 		select
 			(
-				to_jsonb(cells.*) ||
-				jsonb_build_object('geom', st_asgeojson(geom)::jsonb->'coordinates'->0)
+				data ||
+				jsonb_build_object(
+					'geom', st_asgeojson(geom)::jsonb->'coordinates'->0,
+					'id', id
+				)
 			)::text
-		from cells
-		where cells.id = $1
+		from cells_json
+		where id = $1
 	"#;
 
 	let rows = conn.query(&query, &[&id])?;
@@ -48,11 +54,35 @@ pub fn find_contains_any(conn: &Connection, points: Vec<::models::Point>) -> ::e
 	let points = points.into_iter().map(|p| format!("POINT({} {})", p[0], p[1])).collect::<Vec<_>>().join(", ");
 	let points = format!("'{{{}}}'", points);
 	let query = format!(r#"
-		select cells.id
+		select cells_json.id
 		from (select st_geomfromtext(l, 4326) as point from unnest({}::text[]) as l) as points
-        left join cells on st_contains(cells.geom, points.point);
+        left join cells_json on st_contains(cells_json.geom, points.point);
 	"#, points);
 
 	let rows = conn.query(&query, &[])?;
 	Ok(rows.into_iter().map(|r| r.get(0)).collect())
+}
+
+pub fn insert_batch(conn: &Connection, cells: &[Cell]) -> ::errors::Result<()> {
+	let stmt = conn.prepare_cached("insert into cells_json (data, geom) values ($1::jsonb - 'id', st_geomfromtext($2, 4326))")?;
+	for cell in cells {
+		stmt.execute(&[&::serde_json::to_value(cell)?, &geometry::encode_polygon(&cell.geom)])?;
+	}
+
+	Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	pub fn test_all_vec() {
+		let conn = ::db::connect();
+		let cells = all_vec(&conn).expect("Failed to fetch cells");
+
+		for cell in cells {
+			assert!(cell.id > 0);
+		}
+	}
 }

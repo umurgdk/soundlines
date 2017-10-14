@@ -20,6 +20,7 @@ extern crate crossbeam;
 extern crate rand;
 extern crate cgmath;
 extern crate jni;
+extern crate spade;
 
 #[macro_use]
 pub mod macros;
@@ -29,3 +30,6 @@ pub mod models;
 pub mod errors;
 pub mod simulation;
 pub mod exports;
+pub mod generators;
+pub mod geom;
+pub mod visualization;

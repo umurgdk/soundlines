@@ -1,6 +1,7 @@
-use ::models::Entity;
-use ::helpers::*;
-use ::models::Cell;
+use helpers::*;
+use models::Cell;
+use models::Entity;
+use models::NeighborEntry;
 
 impl Entity {
 	const WIFI_LOW: f32 = -50.0;
@@ -19,7 +20,7 @@ impl Entity {
 
 	pub fn is_mating(&self) -> bool {
 		let since_last_mate = self.age - self.start_mating_at;
-		since_last_mate < self.setting.mating_duration && !self.is_waiting_fruit()
+		(since_last_mate < self.setting.mating_duration) && !self.is_waiting_fruit()
 	}
 
 	pub fn is_overcrowded(&self, neighbor_count: i32) -> bool {
@@ -67,7 +68,7 @@ impl Entity {
 		}
 	}
 
-	pub fn update_by_neighbors(&mut self, cell: &Cell, neighbor_count: i32) {
+	pub fn update_by_neighbors(&mut self, cell: &Cell, neighbors: &NeighborEntry) {
 		let sensitivity = self.calculate_sensitivity(cell).abs();
 
 		self.age += self.dna.aging_rate / sensitivity;
@@ -77,9 +78,11 @@ impl Entity {
 			self.size += sensitivity;
 		}
 
+		let crowd_neighbors_count = neighbors.crowd_neighbors.len() as i32;
+
 		// stressed when overcrowded
-		if self.is_overcrowded(neighbor_count) {
-			self.fitness -= (self.dna.stress_rate / sensitivity) * neighbor_count as f32 * 4.0;
+		if self.is_overcrowded(crowd_neighbors_count) {
+			self.fitness -= (self.dna.stress_rate / sensitivity) * crowd_neighbors_count as f32 * 4.0;
 		}
 
 		if !self.is_mating() && self.should_start_mating() {

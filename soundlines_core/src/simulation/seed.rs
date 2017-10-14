@@ -13,6 +13,10 @@ impl Seed {
 	}
 
 	pub fn should_bloom(&self) -> bool {
+		if self.age.trunc() == 0.0 {
+			return false;
+		}
+
 		let is_right_moment = (self.age % (self.setting.mating_freq / 2.0)).floor() == 0.0;
 		let have_chance = random(0.0, 1.05) < self.setting.bloom_proba;
 

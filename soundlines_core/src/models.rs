@@ -199,3 +199,9 @@ pub struct PlantSetting {
 	pub mating_distance: f32,
 	pub crowd_distance: f32
 }
+
+#[derive(Debug, Clone)]
+pub struct NeighborEntry {
+	pub mating_neighbors: Vec<i32>,
+	pub crowd_neighbors: Vec<i32>
+}

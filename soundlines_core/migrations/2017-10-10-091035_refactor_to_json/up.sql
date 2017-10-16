@@ -30,41 +30,37 @@ INSERT INTO entities_json (data, setting_id, cell_id, point)
 --
 CREATE TABLE entity_neighbors
 (
-  entity_id INTEGER NOT NULL
+  entity_id        INTEGER    NOT NULL
     CONSTRAINT entity_neighbors_pkey
     PRIMARY KEY,
-  neighbors JSONB   NOT NULL
+  mating_neighbors INTEGER [] NOT NULL,
+  crowd_neighbors  INTEGER [] NOT NULL
 );
 CREATE UNIQUE INDEX entity_neighbors_entity_id_uindex
   ON entity_neighbors (entity_id);
 
-insert into entity_neighbors_new (entity_id, other_id, distance)
-    SELECT
-      entitiy.id,
-      other.id,
-      st_distance(entit)
 
 INSERT INTO entity_neighbors (entity_id, mating_neighbors, crowd_neighbors)
   SELECT
     e.id,
-    jsonb_agg(n.id :: TEXT),
-    jsonb_build_array() AS others
+    array_agg(n.id),
+    '{}'::int[] AS others
   FROM entities_json e
     INNER JOIN settings_json AS s ON e.setting_id = s.id
     LEFT JOIN entities_json AS n
       ON st_dwithin(e.point :: GEOGRAPHY, n.point :: GEOGRAPHY, (s.data -> 'mating_distance') :: TEXT :: NUMERIC)
-  WHERE e.id != entities_json.id
+  WHERE e.id != n.id
   GROUP BY e.id;
 
 WITH t AS (
     SELECT
-      e.id                    AS entity_id,
-      jsonb_agg(c.id :: TEXT) AS crowd_neighbors
+      e.id            AS entity_id,
+      array_agg(c.id) AS crowd_neighbors
     FROM entities_json e
       INNER JOIN settings_json AS s ON e.setting_id = s.id
       LEFT JOIN entities_json AS c
         ON st_dwithin(e.point :: GEOGRAPHY, c.point :: GEOGRAPHY, (s.data -> 'crowd_distance') :: TEXT :: NUMERIC)
-      WHERE entities_json.id != c.id
+    WHERE e.id != c.id
     GROUP BY e.id
 )
 UPDATE entity_neighbors
@@ -167,58 +163,33 @@ END;
 $$ LANGUAGE plpgsql;
 
 
-CREATE OR REPLACE FUNCTION on_entity_deleted()
+CREATE OR REPLACE FUNCTION notify_neighbors()
   RETURNS TRIGGER AS $$
 DECLARE
+  setting jsonb;
 BEGIN
-  UPDATE entity_neighbors
-  SET
-    mating_neighbors = mating_neighbors - OLD.id :: TEXT,
-    crowd_neighbors  = crowd_neighbors - OLD.id :: TEXT
-  WHERE mating_neighbors ? OLD.id :: TEXT OR crowd_neighbors ? OLD.id :: TEXT;
-
-  DELETE FROM entity_neighbors
-  WHERE entity_id = OLD.id;
-
-  RETURN OLD;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION on_entity_added()
-  RETURNS TRIGGER AS $$
-DECLARE
-  m_neighbors integer[];
-  c_neighbors integer[];
-BEGIN
-
-  m_neighbors := (SELECT id
-                  FROM entities_json
-                    INNER JOIN settings_json ON settings_json.id = entities_json.setting_id
-                  WHERE st_dwithin(point :: GEOGRAPHY, NEW.point :: GEOGRAPHY,
-                                   (settings_json.data -> 'mating_distance') :: TEXT :: NUMERIC))::integer[];
-
-  c_neighbors := (SELECT id
-                  FROM entities_json
-                    INNER JOIN settings_json ON settings_json.id = entities_json.setting_id
-                  WHERE st_dwithin(point :: GEOGRAPHY, NEW.point :: GEOGRAPHY,
-                                   (settings_json.data -> 'mating_distance') :: TEXT :: NUMERIC))::integer[];
-
-  UPDATE entity_neighbors
-  SET
-    mating_neighbors = mating_neighbors || NEW.id :: TEXT
-  WHERE
-    entity_id IN m_neigbors;
-
-  UPDATE entity_neighbors
-  SET
-    crowd_neighbors = crowd_neighbors || NEW.id :: TEXT
-  WHERE
-    entity_id IN c_neighbors;
-
-  insert into entity_neighbors (entity_id, mating_neighbors, crowd_neighbors)
-  VALUES (NEW.id, jsonb_build_array((select id::text from m_neighbors)), jsonb_build_array((select id::text from c_neighbors)));
-
-  RETURN NEW;
+  IF tg_op = 'DELETE'
+  THEN
+    setting := (select data from settings_json where id = OLD.setting_id);
+    PERFORM pg_notify('neighbors', jsonb_build_object(
+        'operation', 'DELETE',
+        'entity_id', OLD.id,
+        'point', st_asgeojson(OLD.point) :: JSONB -> 'coordinates',
+        'mating_distance', (setting->'mating_distance'),
+        'crowd_distance', (setting->'crowd_distance')
+    ) :: TEXT);
+    RETURN OLD;
+  ELSE
+    setting := (select data from settings_json where id = NEW.setting_id);
+    PERFORM pg_notify('neighbors', jsonb_build_object(
+        'operation', 'INSERT',
+        'entity_id', NEW.id,
+        'point', st_asgeojson(NEW.point) :: JSONB -> 'coordinates',
+        'mating_distance', (setting->'mating_distance'),
+        'crowd_distance', (setting->'crowd_distance')
+    ) :: TEXT);
+    RETURN NEW;
+  END IF;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -234,23 +205,12 @@ CREATE TRIGGER notify_simulation
 AFTER INSERT ON entities_json
 FOR EACH ROW EXECUTE PROCEDURE notify_simulation();
 
-DROP TRIGGER IF EXISTS on_entity_deleted
+DROP TRIGGER IF EXISTS notify_neighbors
 ON entities_json;
 
-CREATE TRIGGER on_entity_deleted
-AFTER DELETE ON entities_json
-FOR EACH ROW EXECUTE PROCEDURE on_entity_deleted();
-
-DROP TRIGGER IF EXISTS on_entity_added
-ON entities_json;
-
-CREATE TRIGGER on_entity_added
-AFTER INSERT ON entities_json
-FOR EACH ROW EXECUTE PROCEDURE on_entity_added();
-
-
-
--- // TODO: Add a new trigger to entities for insert/delete operations on entities to update neighbors
+CREATE TRIGGER notify_neighbors
+AFTER DELETE OR INSERT ON entities_json
+FOR EACH ROW EXECUTE PROCEDURE notify_neighbors();
 
 -- Seeds trigger on delete/insert
 DROP TRIGGER IF EXISTS notify_simulation
@@ -272,6 +232,22 @@ FOR EACH ROW EXECUTE PROCEDURE notify_simulation();
 
 
 
+
+
+
+
+update entity_neighbors set mating_neighbors = array_remove(mating_neighbors, 75581), crowd_neighbors = array_remove(crowd_neighbors, 75581);
+select array_remove('{1, 2, 3}'::int[], 2);
+
+select setting_id from entities_json where id = 74006;
+
+
+select jsonb_build_object(
+        'operation', 'DELETE',
+        'entity_id', '123',
+        'point', '123',
+        'mating_distance', (select data->'mating_distance' from settings_json where id = 11)
+    ) :: TEXT;
 
 select st_asgeojson(point) from entities_json where id = 33323;
 select *, st_distance(point::geography, st_setsrid(st_point(126.992057709281,37.5740173649277), 4326)) from entities_json where st_dwithin(point::geography, st_setsrid(st_point(126.992057709281,37.5740173649277), 4326)::geography, 50.0);

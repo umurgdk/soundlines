@@ -1,8 +1,6 @@
 #![feature(cargo_resource_root)]
 
-#[macro_use] extern crate soundlines_core;
-#[macro_use] extern crate log;
-
+extern crate soundlines_core;
 extern crate env_logger;
 extern crate ggez;
 extern crate spade;
@@ -17,15 +15,11 @@ use ggez::graphics;
 use ggez::graphics::Color;
 use ggez::graphics::DrawMode;
 use ggez::graphics::Point2;
-use std::time::Duration;
-use std::path;
-use std::env;
 use std::sync::mpsc::Sender;
 use std::sync::mpsc::Receiver;
 use std::sync::mpsc::channel;
 use std::collections::HashMap;
 use spade::rtree::RTree;
-use spade::SpatialObject;
 
 const WINDOW_WIDTH: f32 = 1033.0;
 const WINDOW_HEIGHT: f32 = 800.0;
@@ -44,10 +38,8 @@ enum HighlightTarget {
 }
 
 struct MainState {
-	pos_x: f32,
 	world_map: graphics::Image,
 	font: graphics::Font,
-	message_sender: Sender<Message>,
 	callback_receiver: Receiver<Message>,
 	cells: Vec<models::Cell>,
 	mouse_pos: Point2,
@@ -61,12 +53,11 @@ struct MainState {
 }
 
 impl MainState {
-	fn new(ctx: &mut Context, message_sender: Sender<Message>, callback_receiver: Receiver<Message>) -> GameResult<MainState> {
+	fn new(ctx: &mut Context, callback_receiver: Receiver<Message>) -> GameResult<MainState> {
 		let world_map = graphics::Image::new(ctx, "/worldmap.png")?;
 		let font = graphics::Font::new(ctx, "/andale_mono.ttf", 12)?;
 
 		let state = MainState {
-			pos_x: 0.0,
 			cells: Vec::new(),
 			mouse_pos: Point2::new(0.0, 0.0),
 			cells_shade: graphics::Mesh::new_circle(ctx, DrawMode::Fill, Point2::new(0.0, 0.0), 1.0, 10.0)?,
@@ -78,7 +69,6 @@ impl MainState {
 			highlight_target: HighlightTarget::Seeds,
 			world_map,
 			font,
-			message_sender,
 			callback_receiver
 		};
 
@@ -140,9 +130,9 @@ impl MainState {
 
 	pub fn highlight_seeds(&self, ctx: &mut Context) -> GameResult<()> {
 		let seeds_around_mouse = self.seeds_tree.lookup_in_circle(&[self.mouse_pos[0] as f64, self.mouse_pos[1] as f64], &1000.0);
-		graphics::set_color(ctx, Color::new(0.0, 0.0, 0.0, 1.0));
+		graphics::set_color(ctx, Color::new(0.0, 0.0, 0.0, 1.0))?;
 		for (i, seed) in seeds_around_mouse.iter().enumerate() {
-			graphics::circle(ctx, DrawMode::Line(1.0), Point2::new(seed.point[0] as f32, seed.point[1] as f32), 10.0, 1.0);
+			graphics::circle(ctx, DrawMode::Line(1.0), Point2::new(seed.point[0] as f32, seed.point[1] as f32), 10.0, 1.0)?;
 			let txt = graphics::Text::new(ctx, &format!("ID: {}, AGE: {}, SHOULD BLOOM: {:?}", seed.id, seed.age, seed.should_bloom()), &self.font)?;
 			graphics::draw(ctx, &txt, Point2::new(WINDOW_WIDTH - 450.0 + txt.width() as f32 / 2.0, i as f32 * 30.0 + 10.0), 0.0)?;
 		}
@@ -152,9 +142,9 @@ impl MainState {
 
 	pub fn highlight_entities(&self, ctx: &mut Context) -> GameResult<()> {
 		let entities_around_mouse = self.entities_tree.lookup_in_circle(&[self.mouse_pos[0] as f64, self.mouse_pos[1] as f64], &1000.0);
-		graphics::set_color(ctx, Color::new(0.0, 0.0, 0.0, 1.0));
+		graphics::set_color(ctx, Color::new(0.0, 0.0, 0.0, 1.0))?;
 		for (i, entitiy) in entities_around_mouse.iter().enumerate() {
-			graphics::circle(ctx, DrawMode::Line(1.0), Point2::new(entitiy.point[0] as f32, entitiy.point[1] as f32), 10.0, 1.0);
+			graphics::circle(ctx, DrawMode::Line(1.0), Point2::new(entitiy.point[0] as f32, entitiy.point[1] as f32), 10.0, 1.0)?;
 			let txt = graphics::Text::new(ctx, &format!("ID: {}, AGE: {}, MATING: {:?}", entitiy.id, entitiy.age, entitiy.is_mating()), &self.font)?;
 			graphics::draw(ctx, &txt, Point2::new(WINDOW_WIDTH - 450.0 + txt.width() as f32 / 2.0, i as f32 * 30.0 + 10.0), 0.0)?;
 		}
@@ -165,7 +155,7 @@ impl MainState {
 
 impl event::EventHandler for MainState {
 	fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
-		self.handle_callbacks(ctx);
+		self.handle_callbacks(ctx)?;
 		Ok(())
 	}
 
@@ -173,8 +163,8 @@ impl event::EventHandler for MainState {
 		let fps = ggez::timer::get_fps(ctx);
 
 		graphics::clear(ctx);
-		graphics::set_color(ctx, Color::new(1.0, 1.0, 1.0, 1.0));
-		graphics::draw(ctx, &self.world_map, Point2::new(1033.0 / 2.0, 400.0), 0.0);
+		graphics::set_color(ctx, Color::new(1.0, 1.0, 1.0, 1.0))?;
+		graphics::draw(ctx, &self.world_map, Point2::new(1033.0 / 2.0, 400.0), 0.0)?;
 
 		let fps_text = graphics::Text::new(ctx, &format!("FPS: {:.2}", fps), &self.font)?;
 		let n_seeds_text = graphics::Text::new(ctx, &format!("Seeds: {}", self.seeds_tree.size()), &self.font)?;
@@ -192,7 +182,7 @@ impl event::EventHandler for MainState {
 		graphics::draw(ctx, &self.cells_line, Point2::new(0.0, 0.0), 0.0)?;
 
 		// Draw mouse area
-		graphics::set_color(ctx, Color::new(1.0, 1.0, 1.0, 1.0));
+		graphics::set_color(ctx, Color::new(1.0, 1.0, 1.0, 1.0))?;
 		graphics::circle(ctx, DrawMode::Line(2.0), self.mouse_pos.clone(), 50.0, 0.9)?;
 
 		match self.highlight_target {
@@ -216,7 +206,7 @@ impl event::EventHandler for MainState {
 	fn mouse_motion_event(&mut self, _ctx: &mut Context, _state: event::MouseState, x: i32, y: i32, _xrel: i32, _yrel: i32) {
 		self.mouse_pos = Point2::new(x as f32, y as f32);
 	}
-	fn key_down_event(&mut self, ctx: &mut Context, keycode: event::Keycode, _keymod: event::Mod, _repeat: bool) {
+	fn key_down_event(&mut self, _ctx: &mut Context, keycode: event::Keycode, _keymod: event::Mod, _repeat: bool) {
 		match keycode {
 			event::Keycode::Space => {
 				if self.highlight_target == HighlightTarget::Seeds {
@@ -259,21 +249,20 @@ fn main() {
 		})).expect("Simulation failed!");
 	});
 
-	message_sender.send(Message::FetchCells);
+	message_sender.send(Message::FetchCells).expect("Failed to send message to fetcher thread");
 
-	let state = &mut MainState::new(ctx, message_sender, callback_receiver).unwrap();
+	let state = &mut MainState::new(ctx, callback_receiver).unwrap();
 
 	event::run(ctx, state).unwrap();
 
 	// TODO: Find a way to safe quit threads
-	sim_thread.join();
-	info_thread.join();
+	sim_thread.join().expect("Failed to join simulation thread");
+	info_thread.join().expect("Failed to join information thread").unwrap();
 }
 
 enum Message {
 	FetchCells,
 	ReceiveCells(Vec<models::Cell>),
-	FetchSeeds,
 	ReceiveSeeds(HashMap<i32, models::Seed>),
 	ReceiveEntities(HashMap<i32, models::Entity>)
 }
@@ -283,7 +272,13 @@ fn info_thread(callback_sender: Sender<Message>, message_receiver: Receiver<Mess
 		match msg {
 			Message::FetchCells => {
 				let conn = db::connect();
-				callback_sender.send(Message::ReceiveCells(db::cells::all_vec(&conn)?));
+				match callback_sender.send(Message::ReceiveCells(db::cells::all_vec(&conn)?)) {
+					Err(err) => {
+						eprintln!("ERROR: {}", err);
+						break;
+					},
+					_ => ()
+				}
 			},
 			_  => ()
 		}

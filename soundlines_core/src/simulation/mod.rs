@@ -1,6 +1,7 @@
 mod entity;
 mod dna;
 mod seed;
+mod neighbors;
 
 pub mod sync;
 
@@ -19,7 +20,7 @@ pub fn run<F: FnMut(&HashMap<i32, Entity>, &HashMap<i32, Seed>)>(mut on_turn: Op
 
 	let mut entities = measure!("Loading entities", db::entities::all_hashmap(&conn)?);
 	let mut seeds = measure!("Loading seeds", db::seeds::all_hashmap(&conn)?);
-	let mut neighbors = measure!("Loading neighbors", db::entities::all_neighbors(&conn)?);
+	let mut neighbors = measure!("Loading neighbors", db::neighbors::all_hashmap(&conn)?);
 	let mut cells = measure!("Loading cells", db::cells::all_hashmap(&conn)?);
 
 	let mut seed_drafts = Vec::new();

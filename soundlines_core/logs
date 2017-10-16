@@ -1,0 +1,64 @@
+   Compiling soundlines_core v0.1.0 (file:///Users/admin/Work/soundlines/soundlines_core)
+warning: unused import: `spade::rtree::RTree`
+ --> src/db/entities.rs:5:5
+  |
+5 | use spade::rtree::RTree;
+  |     ^^^^^^^^^^^^^^^^^^^
+  |
+  = note: #[warn(unused_imports)] on by default
+
+warning: unused import: `models::NeighborEntry`
+ --> src/simulation/entity.rs:4:5
+  |
+4 | use models::NeighborEntry;
+  |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused `#[macro_use]` import
+ --> src/bins/visualization.rs:3:1
+  |
+3 | #[macro_use] extern crate soundlines_core;
+  | ^^^^^^^^^^^^
+  |
+  = note: #[warn(unused_imports)] on by default
+
+warning: unused `#[macro_use]` import
+ --> src/bins/visualization.rs:4:1
+  |
+4 | #[macro_use] extern crate log;
+  | ^^^^^^^^^^^^
+
+warning: unused import: `std::time::Duration`
+  --> src/bins/visualization.rs:20:5
+   |
+20 | use std::time::Duration;
+   |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::path`
+  --> src/bins/visualization.rs:21:5
+   |
+21 | use std::path;
+   |     ^^^^^^^^^
+
+warning: unused import: `std::env`
+  --> src/bins/visualization.rs:22:5
+   |
+22 | use std::env;
+   |     ^^^^^^^^
+
+warning: unused import: `spade::SpatialObject`
+  --> src/bins/visualization.rs:28:5
+   |
+28 | use spade::SpatialObject;
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error[E0061]: this function takes 2 parameters but 0 parameters were supplied
+   --> src/bins/visualization.rs:146:111
+    |
+146 |    let txt = graphics::Text::new(ctx, &format!("ID: {}, AGE: {}, SHOULD BLOOM: {:?}", seed.id, seed.age, seed.should_bloom()), &self.font)?;
+    |                                                                                                               ^^^^^^^^^^^^ expected 2 parameters
+
+error: aborting due to previous error
+
+error: Could not compile `soundlines_core`.
+
+To learn more, run the command again with --verbose.

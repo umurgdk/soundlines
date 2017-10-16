@@ -10,6 +10,7 @@ pub mod seeds;
 pub mod weather;
 pub mod geometry;
 pub mod plant_setting;
+pub mod neighbors;
 
 /// Connects to database with `env::var(DATABASE_URL)`
 ///
